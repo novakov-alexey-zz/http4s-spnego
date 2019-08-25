@@ -1,4 +1,5 @@
 import Dependencies._
+import sbtrelease.ReleaseStateTransformations._
 
 ThisBuild /  publishTo := {
   val nexus = "https://oss.sonatype.org/"
@@ -45,6 +46,20 @@ lazy val sharedSettings = Seq(
     "-language:implicitConversions"
   )
 )
+
+releaseProcess := Seq.empty[ReleaseStep]
+releaseProcess ++= (if (sys.env.contains("RELEASE_VERSION_BUMP"))
+  Seq[ReleaseStep](
+    checkSnapshotDependencies,
+    inquireVersions,
+    setReleaseVersion,
+    commitReleaseVersion,
+    tagRelease
+  )
+else Seq.empty[ReleaseStep])
+releaseProcess ++= (if (sys.env.contains("RELEASE_PUBLISH"))
+  Seq[ReleaseStep](inquireVersions, setNextVersion, commitNextVersion, pushChanges)
+else Seq.empty[ReleaseStep])
 
 lazy val root = project
   .in(file("."))
