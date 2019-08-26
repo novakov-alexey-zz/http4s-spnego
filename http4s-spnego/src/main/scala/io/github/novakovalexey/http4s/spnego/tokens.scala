@@ -6,7 +6,8 @@ import java.security.MessageDigest
 
 import scala.util.{Success, Try}
 
-case class TokenParseException(message: String) extends Exception(message)
+sealed abstract class TokenError(val message: String)
+case class TokenParseError(override val message: String) extends TokenError(message)
 
 class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   private def newExpiration: Long = System.currentTimeMillis + tokenValidity
@@ -24,22 +25,21 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   def create(principal: String): Token =
     Token(principal, newExpiration)
 
-  def parse(tokenString: String): Token = tokenString.split("&").toList match {
-    case principal :: expirationString :: signature :: Nil => Try(expirationString.toLong) match {
-      case Success(expiration) =>
-        val token = Token(principal, expiration)
-        if (sign(token) != signature)
-          throw TokenParseException("incorrect signature")
-        token
-      case _ => throw TokenParseException("expiration not a long")
-    }
-    case _ => throw TokenParseException("incorrect number of fields")
+  def parse(tokenString: String): Either[TokenError, Token] = tokenString.split("&").toList match {
+    case principal :: expirationString :: signature :: Nil =>
+      Try(expirationString.toLong) match {
+        case Success(expiration) =>
+          val token = Token(principal, expiration)
+          Either.cond(sign(token) == signature, token, TokenParseError("incorrect signature"))
+        case _ => Left(TokenParseError("expiration not a long"))
+      }
+    case _ => Left(TokenParseError("incorrect number of fields"))
   }
 
   def serialize(token: Token): String =
     List(token.principal, token.expiration, sign(token)).mkString("&")
 }
 
-case class Token private[spnego](principal: String, expiration: Long) {
+case class Token private[spnego] (principal: String, expiration: Long) {
   def expired: Boolean = System.currentTimeMillis > expiration
 }

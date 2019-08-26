@@ -6,6 +6,7 @@ import java.security.{PrivilegedAction, PrivilegedActionException, PrivilegedExc
 import cats.Monad
 import cats.data.{Kleisli, OptionT}
 import cats.implicits._
+import cats.syntax.either._
 import com.typesafe.scalalogging.LazyLogging
 import io.github.novakovalexey.http4s.spnego.SpnegoAuthenticator._
 import javax.security.auth.Subject
@@ -83,21 +84,28 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
     override def run: GSSManager = GSSManager.getInstance
   })
 
-  private def cookieToken(hs: Headers): Option[Either[Rejection, Token]] =
-    try {
-      for {
-        c <- headers.Cookie
-          .from(hs)
-          .collect { case h => h.values.find(_.name == cfg.cookieName) }
-          .flatten
-        _ = logger.debug("cookie found")
-        t <- Some(tokens.parse(c.content)).filter(!_.expired)
-        _ = logger.debug("spnego token inside cookie not expired")
-      } yield Right(t)
-    } catch {
-      case e: TokenParseException =>
-        Some(Left(MalformedHeaderRejection(s"Cookie: ${cfg.cookieName}", e.getMessage, Some(e)))) // malformed token in cookie
-    }
+  private def cookieToken(hs: Headers): Option[Either[Rejection, Token]] = {
+    for {
+      c <- headers.Cookie
+        .from(hs)
+        .collect { case h => h.values.find(_.name == cfg.cookieName) }
+        .flatten
+
+      _ = logger.debug("cookie found")
+
+      t <- Some(
+        tokens
+          .parse(c.content)
+          .leftMap(e => MalformedHeaderRejection(s"Cookie: ${cfg.cookieName}", e.message, None))
+      )
+
+      res <- t match {
+        case Right(token) => if (token.expired) None else Some(Right(token))
+        case Left(e) => Some(Left(e))
+      }
+      _ = logger.debug("spnego token inside cookie not expired")
+    } yield res
+  }
 
   private def clientToken(hs: Headers): Option[Array[Byte]] =
     headers.Authorization.from(hs).filter(_.value.startsWith(Negotiate)).map { authHeader =>
