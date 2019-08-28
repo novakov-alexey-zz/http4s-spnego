@@ -1,11 +1,14 @@
 import Dependencies._
 import sbtrelease.ReleaseStateTransformations._
 
+useGpg := true
+pgpReadOnly := false
+
 ThisBuild /  publishTo := {
   val nexus = "https://oss.sonatype.org/"
   Some("releases".at(nexus + "service/local/staging/deploy/maven2"))
 }
-ThisBuild / useGpg := true
+
 ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 ThisBuild / scmInfo := Some(
   ScmInfo(
