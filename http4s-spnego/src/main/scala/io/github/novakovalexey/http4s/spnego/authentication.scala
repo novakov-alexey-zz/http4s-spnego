@@ -18,6 +18,7 @@ import org.ietf.jgss.{GSSCredential, GSSManager}
 
 import scala.io.Codec
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
   logger.info(s"Configuration:\n ${cfg.show}")
@@ -36,6 +37,7 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
         case MalformedHeaderRejection(name, msg, cause) =>
           cause.foreach(t => logger.error("MalformedHeaderRejection", t))
           (s"Failed to parse '$name' value, because of $msg", Seq.empty)
+        case ServerErrorRejection(e) => (s"server error: ${e.getMessage}", Seq.empty)
       }
       val res = Response[F](Status.Unauthorized).putHeaders(h: _*).withEntity(e)
       OptionT.liftF(res.pure[F])
@@ -135,8 +137,10 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
     } catch {
       case e: PrivilegedActionException =>
         e.getException match {
-          case e: IOException => throw e // server error
-          case e: Throwable =>
+          case e: IOException =>
+            logger.error("server error", e)
+            Left(ServerErrorRejection(e))
+          case NonFatal(e) =>
             logger.error("negotiation failed", e)
             Left(AuthenticationFailedRejection(CredentialsRejected, challengeHeader())) // rejected
         }
@@ -155,7 +159,7 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
               if (gssContext.isEstablished) Some(tokens.create(gssContext.getSrcName.toString)) else None
             )
           } catch {
-            case e: Throwable =>
+            case NonFatal(e) =>
               logger.error("error in establishing security context", e)
               throw e
           } finally {
