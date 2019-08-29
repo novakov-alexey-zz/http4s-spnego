@@ -18,7 +18,7 @@ val path: Option[String] = None
 val tokenValidity: FiniteDuration = 3600.seconds
 val cookieName = "http4s.spnego"
 
-val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, cookieName, tokenValidity)
+val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
 val authentication = new SpnegoAuthentication[IO](cfg)
 ``` 
 2. Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 

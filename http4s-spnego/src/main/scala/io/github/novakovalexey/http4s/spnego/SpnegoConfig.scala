@@ -13,12 +13,12 @@ case class SpnegoConfig(
   signatureSecret: String,
   domain: Option[String],
   path: Option[String],
-  cookieName: String,
-  tokenValidity: Duration
+  tokenValidity: Duration,
+  cookieName: String = "http4s.spnego"
 )
 
 object SpnegoConfig {
-  implicit val cfg: Show[SpnegoConfig] = (c: SpnegoConfig) => s"""http4s.spnego config:
+  implicit val cfg: Show[SpnegoConfig] = (c: SpnegoConfig) => s"""http4s-spnego config:
                                                                  |principal: ${c.kerberosPrincipal}
                                                                  |realm: ${c.kerberosRealm}
                                                                  |keytab: ${c.kerberosKeytab}
@@ -26,7 +26,7 @@ object SpnegoConfig {
                                                                  |ticketCache: ${c.kerberosTicketCache}
                                                                  |domain: ${c.domain}
                                                                  |path: ${c.path}
-                                                                 |cookieName: ${c.cookieName}
                                                                  |tokenValidity: ${c.tokenValidity}
+                                                                 |cookieName: ${c.cookieName}
                                                                  |""".stripMargin
 }
