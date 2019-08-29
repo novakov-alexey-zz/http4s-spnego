@@ -133,8 +133,9 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
     okResponse.cookies.head.name should ===(cookieName)
 
     val token = testTokens.parse(okResponse.cookies.head.content)
-    token.principal should ===(userPrincipal)
-    token.expiration should be > System.currentTimeMillis()
+    token.isRight should ===(true)
+    token.getOrElse(fail()).principal should ===(userPrincipal)
+    token.getOrElse(fail()).expiration should be > System.currentTimeMillis()
 
     //given
     val req3 = Request[IO]().addCookie(RequestCookie(cookieName, okResponse.cookies.head.content))
