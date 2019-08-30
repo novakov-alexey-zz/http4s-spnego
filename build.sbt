@@ -35,7 +35,6 @@ lazy val sharedSettings = Seq(
   // https://github.com/sbt/sbt-pgp/issues/150
   updateOptions := updateOptions.value.withGigahorse(false),
   scalaVersion := "2.13.0",
-  crossScalaVersions := Seq("2.12.9", "2.13.0"),
   publishArtifact in Test := false,
   scalacOptions ++= Seq(
     "-deprecation",
