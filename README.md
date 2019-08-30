@@ -1,5 +1,6 @@
 # http4s-spnego
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13)
+[![Build Status](https://travis-ci.org/novakov-alexey/http4s-spnego.svg?branch=master)](https://travis-ci.org/novakov-alexey/http4s-spnego)
 
 This library provides [SPNEGO Authentication](https://en.wikipedia.org/wiki/SPNEGO) as a middleware for [http4s](https://github.com/http4s/http4s).
 
@@ -18,7 +19,7 @@ val path: Option[String] = None
 val tokenValidity: FiniteDuration = 3600.seconds
 val cookieName = "http4s.spnego"
 
-val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, cookieName, tokenValidity)
+val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
 val authentication = new SpnegoAuthentication[IO](cfg)
 ``` 
 2. Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 

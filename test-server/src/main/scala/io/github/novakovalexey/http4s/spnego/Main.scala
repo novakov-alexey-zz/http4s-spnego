@@ -26,7 +26,7 @@ object Main extends IOApp {
     val cookieName = "http4s.spnego"
     val signatureSecret = "secret"
 
-    val cfg = SpnegoConfig(principal, realm, keytab, debug, None, signatureSecret, domain, path, cookieName, tokenValidity)
+    val cfg = SpnegoConfig(principal, realm, keytab, debug, None, signatureSecret, domain, path, tokenValidity, cookieName)
 
     val spnego = new SpnegoAuthentication[F](cfg)
     val httpApp = new LoginEndpoint[F](spnego).routes.orNotFound
@@ -45,7 +45,7 @@ class LoginEndpoint[F[_]](spnego: SpnegoAuthentication[F])(implicit F: Sync[F]) 
   val routes: HttpRoutes[F] =
     spnego.middleware(AuthedRoutes.of[Token, F] {
       case GET -> Root as token =>
-        Ok(s"This page is protected using HTTP SPNEGO authentication; logged in as $token")
+        Ok(s"This page is protected using HTTP SPNEGO authentication; logged in with $token")
           .map(_.addCookie(spnego.makeCookie(token)))
     })
 }
