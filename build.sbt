@@ -50,6 +50,7 @@ lazy val sharedSettings = Seq(
   )
 )
 
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
 releaseProcess := Seq.empty[ReleaseStep]
 releaseProcess ++= (if (sys.env.contains("RELEASE_VERSION_BUMP"))
   Seq[ReleaseStep](
@@ -57,7 +58,8 @@ releaseProcess ++= (if (sys.env.contains("RELEASE_VERSION_BUMP"))
     inquireVersions,
     setReleaseVersion,
     commitReleaseVersion,
-    tagRelease
+    tagRelease,
+    publishArtifacts
   )
 else Seq.empty[ReleaseStep])
 releaseProcess ++= (if (sys.env.contains("RELEASE_PUBLISH"))
