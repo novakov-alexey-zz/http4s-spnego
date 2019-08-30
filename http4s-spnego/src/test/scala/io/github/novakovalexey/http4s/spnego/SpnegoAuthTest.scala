@@ -24,7 +24,7 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
   val tokenValidity: FiniteDuration = 3600.seconds
   val cookieName = "http4s.spnego"
 
-  val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, cookieName, tokenValidity)
+  val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
   val authentication = new SpnegoAuthentication[IO](cfg)
   val login = new LoginEndpoint[IO](authentication)
 
@@ -133,8 +133,9 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
     okResponse.cookies.head.name should ===(cookieName)
 
     val token = testTokens.parse(okResponse.cookies.head.content)
-    token.principal should ===(userPrincipal)
-    token.expiration should be > System.currentTimeMillis()
+    token.isRight should ===(true)
+    token.getOrElse(fail()).principal should ===(userPrincipal)
+    token.getOrElse(fail()).expiration should be > System.currentTimeMillis()
 
     //given
     val req3 = Request[IO]().addCookie(RequestCookie(cookieName, okResponse.cookies.head.content))

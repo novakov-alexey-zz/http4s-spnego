@@ -6,6 +6,7 @@ import java.security.{PrivilegedAction, PrivilegedActionException, PrivilegedExc
 import cats.Monad
 import cats.data.{Kleisli, OptionT}
 import cats.implicits._
+import cats.syntax.either._
 import com.typesafe.scalalogging.LazyLogging
 import io.github.novakovalexey.http4s.spnego.SpnegoAuthenticator._
 import javax.security.auth.Subject
@@ -17,6 +18,7 @@ import org.ietf.jgss.{GSSCredential, GSSManager}
 
 import scala.io.Codec
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
   logger.info(s"Configuration:\n ${cfg.show}")
@@ -35,15 +37,16 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
         case MalformedHeaderRejection(name, msg, cause) =>
           cause.foreach(t => logger.error("MalformedHeaderRejection", t))
           (s"Failed to parse '$name' value, because of $msg", Seq.empty)
+        case ServerErrorRejection(e) => (s"server error: ${e.getMessage}", Seq.empty)
       }
       val res = Response[F](Status.Unauthorized).putHeaders(h: _*).withEntity(e)
       OptionT.liftF(res.pure[F])
     }
 
-  def middleware(onFailure: AuthedRoutes[Rejection, F]) =
+  def middleware(onFailure: AuthedRoutes[Rejection, F]): AuthMiddleware[F, Token] =
     AuthMiddleware(authToken, onFailure)
 
-  val middleware = AuthMiddleware(authToken, onFailure)
+  val middleware: AuthMiddleware[F, Token] = AuthMiddleware(authToken, onFailure)
 
   def makeCookie(token: Token): ResponseCookie = {
     val content = tokens.serialize(token)
@@ -83,21 +86,28 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
     override def run: GSSManager = GSSManager.getInstance
   })
 
-  private def cookieToken(hs: Headers): Option[Either[Rejection, Token]] =
-    try {
-      for {
-        c <- headers.Cookie
-          .from(hs)
-          .collect { case h => h.values.find(_.name == cfg.cookieName) }
-          .flatten
-        _ = logger.debug("cookie found")
-        t <- Some(tokens.parse(c.content)).filter(!_.expired)
-        _ = logger.debug("spnego token inside cookie not expired")
-      } yield Right(t)
-    } catch {
-      case e: TokenParseException =>
-        Some(Left(MalformedHeaderRejection(s"Cookie: ${cfg.cookieName}", e.getMessage, Some(e)))) // malformed token in cookie
-    }
+  private def cookieToken(hs: Headers): Option[Either[Rejection, Token]] = {
+    for {
+      c <- headers.Cookie
+        .from(hs)
+        .collect { case h => h.values.find(_.name == cfg.cookieName) }
+        .flatten
+
+      _ = logger.debug("cookie found")
+
+      t <- Some(
+        tokens
+          .parse(c.content)
+          .leftMap(e => MalformedHeaderRejection(s"Cookie: ${cfg.cookieName}", e.message, None))
+      )
+
+      res <- t match {
+        case Right(token) => if (token.expired) None else Some(Right(token))
+        case Left(e) => Some(Left(e))
+      }
+      _ = logger.debug("spnego token inside cookie not expired")
+    } yield res
+  }
 
   private def clientToken(hs: Headers): Option[Array[Byte]] =
     headers.Authorization.from(hs).filter(_.value.startsWith(Negotiate)).map { authHeader =>
@@ -127,8 +137,10 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
     } catch {
       case e: PrivilegedActionException =>
         e.getException match {
-          case e: IOException => throw e // server error
-          case e: Throwable =>
+          case e: IOException =>
+            logger.error("server error", e)
+            Left(ServerErrorRejection(e))
+          case NonFatal(e) =>
             logger.error("negotiation failed", e)
             Left(AuthenticationFailedRejection(CredentialsRejected, challengeHeader())) // rejected
         }
@@ -147,7 +159,7 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
               if (gssContext.isEstablished) Some(tokens.create(gssContext.getSrcName.toString)) else None
             )
           } catch {
-            case e: Throwable =>
+            case NonFatal(e) =>
               logger.error("error in establishing security context", e)
               throw e
           } finally {
