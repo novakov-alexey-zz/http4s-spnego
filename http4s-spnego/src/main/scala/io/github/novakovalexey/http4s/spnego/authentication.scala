@@ -43,10 +43,10 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
       OptionT.liftF(res.pure[F])
     }
 
-  def middleware(onFailure: AuthedRoutes[Rejection, F]) =
+  def middleware(onFailure: AuthedRoutes[Rejection, F]): AuthMiddleware[F, Token] =
     AuthMiddleware(authToken, onFailure)
 
-  val middleware = AuthMiddleware(authToken, onFailure)
+  val middleware: AuthMiddleware[F, Token] = AuthMiddleware(authToken, onFailure)
 
   def makeCookie(token: Token): ResponseCookie = {
     val content = tokens.serialize(token)
