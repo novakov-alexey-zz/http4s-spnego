@@ -1,5 +1,6 @@
 # http4s-spnego
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13)
+[![Build Status](https://travis-ci.org/novakov-alexey/http4s-spnego.svg?branch=master)](https://travis-ci.org/novakov-alexey/http4s-spnego)
 
 This library provides [SPNEGO Authentication](https://en.wikipedia.org/wiki/SPNEGO) as a middleware for [http4s](https://github.com/http4s/http4s).
 
