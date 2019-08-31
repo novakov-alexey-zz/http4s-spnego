@@ -17,8 +17,6 @@ ADD krb5.conf /etc/krb5.conf
 RUN apt-get install -y krb5-user && \
     mkdir /krb5 && chmod 755 /krb5 && \
     apt-get clean && rm -rf /tmp/* /var/lib/apt/lists/*
-
-VOLUME ["/krb5","/dev/shm","/etc/krb5.conf.d"]
 # Kerberos stuff - end
 
 USER 1001:0
