@@ -85,15 +85,13 @@ lazy val root = project
   .in(file("."))
   .aggregate(`http4s-spnego`, `test-server`)
   .settings(
-    publishArtifact := false
+    publishArtifact := false,
+    releaseCrossBuild := false
   )
 
 lazy val `http4s-spnego` = project.settings(
   sharedSettings,
   releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-  scalaVersion := scala213,
-  releaseCrossBuild := true,
-  crossScalaVersions := supportedScalaVersions,
   libraryDependencies ++= Seq(
     http4sCore,
     http4sBlaze,
