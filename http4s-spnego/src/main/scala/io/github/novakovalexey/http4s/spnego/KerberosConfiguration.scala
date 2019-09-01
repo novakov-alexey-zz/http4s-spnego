@@ -1,8 +1,8 @@
 package io.github.novakovalexey.http4s.spnego
 
 import javax.security.auth.login.{AppConfigurationEntry, Configuration}
-
-import scala.jdk.CollectionConverters._
+// scala 2.12 needs to be supported
+import collection.JavaConverters._
 
 case class KerberosConfiguration(keytab: String, principal: String, debug: Boolean, ticketCache: Option[String]) extends Configuration {
 

@@ -17,7 +17,8 @@ import org.http4s.server.AuthMiddleware
 import org.ietf.jgss.{GSSCredential, GSSManager}
 
 import scala.io.Codec
-import scala.jdk.CollectionConverters._
+// scala 2.12 needs to be supported
+import collection.JavaConverters._
 import scala.util.control.NonFatal
 
 class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
