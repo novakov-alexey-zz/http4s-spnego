@@ -12,6 +12,8 @@ Project is an adaptation of [akka-http-spnego](https://github.com/tresata/akka-h
 
 ```scala
 libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.13" % "<version>"
+or 
+libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.12" % "<version>"
 ```
 
 1. Instantiate `SpnegoAuthentication` using `SpnegoConfig` case class, for example:
