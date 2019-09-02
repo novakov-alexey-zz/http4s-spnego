@@ -4,7 +4,7 @@ import java.io.IOException
 import java.security.{PrivilegedAction, PrivilegedActionException, PrivilegedExceptionAction}
 
 import cats.Monad
-import cats.data.{Kleisli, OptionT}
+import cats.data.{Kleisli, NonEmptyList, OptionT}
 import cats.implicits._
 import cats.syntax.either._
 import com.typesafe.scalalogging.LazyLogging
@@ -13,6 +13,7 @@ import javax.security.auth.Subject
 import javax.security.auth.kerberos.KerberosPrincipal
 import javax.security.auth.login.LoginContext
 import org.http4s._
+import org.http4s.headers.`WWW-Authenticate`
 import org.http4s.server.AuthMiddleware
 import org.ietf.jgss.{GSSCredential, GSSManager}
 
@@ -57,7 +58,6 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
 
 private[spnego] object SpnegoAuthenticator {
   private[spnego] val Negotiate = "Negotiate"
-  private[spnego] val Authenticate = "WWW-Authenticate"
 
   private[spnego] def reasonToString: RejectionReason => String = {
     case CredentialsRejected => "Credentials rejected"
@@ -120,7 +120,7 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
 
   private def challengeHeader(maybeServerToken: Option[Array[Byte]] = None): Header = {
     val scheme = Negotiate + maybeServerToken.map(" " + Base64Util.encode(_)).getOrElse("")
-    Header(Authenticate, scheme)
+    `WWW-Authenticate`(NonEmptyList.one(Challenge(scheme, cfg.kerberosRealm)))
   }
 
   private def kerberosCore(clientToken: Array[Byte]): Either[Rejection, Token] = {
