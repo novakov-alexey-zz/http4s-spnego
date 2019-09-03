@@ -1,6 +1,6 @@
 package io.github.novakovalexey.http4s.spnego
 
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCode, IO, IOApp, Sync, Timer}
+import cats.effect._
 import cats.implicits._
 import fs2.Stream
 import org.http4s.dsl.Http4sDsl
@@ -37,10 +37,9 @@ object Main extends IOApp {
       .withHttpApp(finalHttpApp)
       .serve
   }
-
 }
 
-class LoginEndpoint[F[_]](spnego: SpnegoAuthentication[F])(implicit F: Sync[F]) extends Http4sDsl[F] {
+class LoginEndpoint[F[_]: Sync](spnego: SpnegoAuthentication[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] =
     spnego.middleware(AuthedRoutes.of[Token, F] {

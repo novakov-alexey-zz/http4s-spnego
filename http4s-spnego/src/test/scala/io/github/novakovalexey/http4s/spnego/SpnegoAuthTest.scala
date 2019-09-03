@@ -130,15 +130,16 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
     //then
     okResponse.status should ===(Status.Ok)
     okResponse.cookies.length should ===(1)
-    okResponse.cookies.head.name should ===(cookieName)
+    okResponse.cookies.headOption.map(_.name should ===(cookieName)).getOrElse(fail())
 
-    val token = testTokens.parse(okResponse.cookies.head.content)
+    val cookie = okResponse.cookies.headOption.map(_.content).getOrElse(fail())
+    val token = testTokens.parse(cookie)
     token.isRight should ===(true)
     token.getOrElse(fail()).principal should ===(userPrincipal)
     token.getOrElse(fail()).expiration should be > System.currentTimeMillis()
 
     //given
-    val req3 = Request[IO]().addCookie(RequestCookie(cookieName, okResponse.cookies.head.content))
+    val req3 = Request[IO]().addCookie(RequestCookie(cookieName, cookie))
     //when
     val res3 = routes.run(req3)
     //then
@@ -162,7 +163,7 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
     actualResp.status should ===(Status.BadRequest)
     val maybeHeader = actualResp.headers.get("test 1".ci)
     maybeHeader.isDefined should ===(true)
-    maybeHeader.get.value should ===("test 2")
+    maybeHeader.map(_.value should ===("test 2")).getOrElse(fail())
     actualResp.as[String].unsafeRunSync() should ===("test entity")
   }
 }

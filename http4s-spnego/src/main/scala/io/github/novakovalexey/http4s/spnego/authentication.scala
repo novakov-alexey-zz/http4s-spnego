@@ -4,7 +4,7 @@ import java.io.IOException
 import java.security.{PrivilegedAction, PrivilegedActionException, PrivilegedExceptionAction}
 
 import cats.Monad
-import cats.data.{Kleisli, NonEmptyList, OptionT}
+import cats.data.{Kleisli, OptionT}
 import cats.implicits._
 import cats.syntax.either._
 import com.typesafe.scalalogging.LazyLogging
@@ -13,13 +13,13 @@ import javax.security.auth.Subject
 import javax.security.auth.kerberos.KerberosPrincipal
 import javax.security.auth.login.LoginContext
 import org.http4s._
-import org.http4s.headers.`WWW-Authenticate`
 import org.http4s.server.AuthMiddleware
 import org.ietf.jgss.{GSSCredential, GSSManager}
 
 import scala.io.Codec
+import scala.util.{Failure, Success, Try}
 // scala 2.12 needs to be supported
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
@@ -58,6 +58,7 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
 
 private[spnego] object SpnegoAuthenticator {
   private[spnego] val Negotiate = "Negotiate"
+  private[spnego] val Authenticate = "WWW-Authenticate"
 
   private[spnego] def reasonToString: RejectionReason => String = {
     case CredentialsRejected => "Credentials rejected"
@@ -77,7 +78,8 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
   private val kerberosConfiguration =
     KerberosConfiguration(cfg.kerberosKeytab, cfg.kerberosPrincipal, cfg.kerberosDebug, cfg.kerberosTicketCache)
 
-  private val loginContext = new LoginContext("", subject, null, kerberosConfiguration)
+  private val noCallback = null
+  private val loginContext = new LoginContext("", subject, noCallback, kerberosConfiguration)
   loginContext.login()
 
   private[spnego] def apply(hs: Headers): Either[Rejection, Token] =
@@ -120,11 +122,11 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
 
   private def challengeHeader(maybeServerToken: Option[Array[Byte]] = None): Header = {
     val scheme = Negotiate + maybeServerToken.map(" " + Base64Util.encode(_)).getOrElse("")
-    `WWW-Authenticate`(NonEmptyList.one(Challenge(scheme, cfg.kerberosRealm)))
+    Header(Authenticate, scheme)
   }
 
   private def kerberosCore(clientToken: Array[Byte]): Either[Rejection, Token] = {
-    try {
+    Try {
       val (maybeServerToken, maybeToken) = kerberosAcceptToken(clientToken)
       logger.debug("maybeServerToken {} maybeToken {}", maybeServerToken.map(Base64Util.encode), maybeToken)
 
@@ -135,13 +137,14 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
         logger.debug("no token received but if there is a serverToken then negotiations are ongoing")
         Left(AuthenticationFailedRejection(CredentialsMissing, challengeHeader(maybeServerToken)))
       }
-    } catch {
-      case e: PrivilegedActionException =>
+    } match {
+      case Success(v) => v
+      case Failure(e: PrivilegedActionException) =>
         e.getException match {
           case e: IOException =>
             logger.error("server error", e)
             Left(ServerErrorRejection(e))
-          case NonFatal(e) =>
+          case _ =>
             logger.error("negotiation failed", e)
             Left(AuthenticationFailedRejection(CredentialsRejected, challengeHeader())) // rejected
         }
@@ -153,7 +156,8 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
       loginContext.getSubject,
       new PrivilegedExceptionAction[(Option[Array[Byte]], Option[Token])] {
         override def run: (Option[Array[Byte]], Option[Token]) = {
-          val gssContext = gssManager.createContext(null: GSSCredential)
+          val defaultAcceptor: GSSCredential = null
+          val gssContext = gssManager.createContext(defaultAcceptor)
           try {
             (
               Option(gssContext.acceptSecContext(clientToken, 0, clientToken.length)),
