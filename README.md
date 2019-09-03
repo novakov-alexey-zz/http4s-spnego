@@ -75,4 +75,3 @@ See [tests](http4s-spnego/src/test/scala/io/github/novakovalexey/http4s/spnego) 
 ```bash
 curl -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt http://<yourserver>:8080/
 ```
-
