@@ -18,3 +18,4 @@ final case class MalformedHeaderRejection(headerName: String, errorMsg: String, 
     extends Rejection
 
 final case class ServerErrorRejection(error: IOException) extends Rejection
+final case class UnexpectedErrorRejection(error: Throwable) extends Rejection

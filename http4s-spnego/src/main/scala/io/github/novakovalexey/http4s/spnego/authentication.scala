@@ -39,6 +39,7 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
           cause.foreach(t => logger.error("MalformedHeaderRejection", t))
           (s"Failed to parse '$name' value, because of $msg", Seq.empty)
         case ServerErrorRejection(e) => (s"server error: ${e.getMessage}", Seq.empty)
+        case UnexpectedErrorRejection(e) => (s"unexpected error: ${e.getMessage}", Seq.empty)
       }
       val res = Response[F](Status.Unauthorized).putHeaders(h: _*).withEntity(e)
       OptionT.liftF(res.pure[F])
@@ -147,6 +148,9 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
             logger.error("negotiation failed", e)
             Left(AuthenticationFailedRejection(CredentialsRejected, challengeHeader())) // rejected
         }
+      case Failure(e) =>
+        logger.error("unexpected error", e)
+        Left(UnexpectedErrorRejection(e))
     }
   }
 
