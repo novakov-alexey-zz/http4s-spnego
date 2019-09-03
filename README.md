@@ -17,7 +17,7 @@ or
 libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.12" % "<version>"
 ```
 
-1. Instantiate `SpnegoAuthentication` using `SpnegoConfig` case class, for example:
+2. Instantiate `SpnegoAuthentication` using `SpnegoConfig` case class, for example:
 ```scala
 val realm = "EXAMPLE.ORG"
 val principal = s"HTTP/myservice@$realm"
@@ -32,7 +32,7 @@ val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, 
 val authentication = new SpnegoAuthentication[IO](cfg)
 ``` 
 
-1. Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 
+3. Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 
 Wrapped routes will be called successfully *only if* SPNEGO authentication succeded. 
 
 ```scala
@@ -52,7 +52,7 @@ class LoginEndpoint[F[_]](spnego: SpnegoAuthentication[F])(implicit F: Sync[F]) 
 }
 ```
 
-1. Use routes in your server:
+4. Use routes in your server:
 ```scala
 val login = new LoginEndpoint[IO](authentication)
 val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(login)
