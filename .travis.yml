@@ -1,6 +1,7 @@
 language: scala
 scala:
   - 2.13.0
+  - 2.12.9
 cache:
   directories:
     - "$HOME/.coursier/cache"
