@@ -1,4 +1,5 @@
 # http4s-spnego
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/e5cbdb15d6e14135bc970a5f83706fcb)](https://app.codacy.com/app/novakov.alex/http4s-spnego?utm_source=github.com&utm_medium=referral&utm_content=novakov-alexey/http4s-spnego&utm_campaign=Badge_Grade_Dashboard)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13)
 [![Build Status](https://travis-ci.org/novakov-alexey/http4s-spnego.svg?branch=master)](https://travis-ci.org/novakov-alexey/http4s-spnego)
 
