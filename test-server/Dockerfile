@@ -4,6 +4,7 @@ COPY target/universal/stage /opt/docker
 USER root
 RUN ["chmod", "-R", "u=rX,g=rX", "/opt/docker"]
 RUN ["chmod", "u+x,g+x", "/opt/docker/bin/test-server"]
+USER 1001:0
 
 FROM azul/zulu-openjdk-debian:8u222
 USER root
