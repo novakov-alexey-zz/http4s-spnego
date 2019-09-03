@@ -1,4 +1,5 @@
 # http4s-spnego
+
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/e5cbdb15d6e14135bc970a5f83706fcb)](https://app.codacy.com/app/novakov.alex/http4s-spnego?utm_source=github.com&utm_medium=referral&utm_content=novakov-alexey/http4s-spnego&utm_campaign=Badge_Grade_Dashboard)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.novakov-alexey/http4s-spnego_2.13)
 [![Build Status](https://travis-ci.org/novakov-alexey/http4s-spnego.svg?branch=master)](https://travis-ci.org/novakov-alexey/http4s-spnego)
@@ -9,7 +10,7 @@ Project is an adaptation of [akka-http-spnego](https://github.com/tresata/akka-h
 
 ## How to use
 
-1. Add library into your dependencies:
+1.  Add library into your dependencies:
 
 ```scala
 libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.13" % "<version>"
@@ -17,7 +18,8 @@ or
 libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.12" % "<version>"
 ```
 
-2. Instantiate `SpnegoAuthentication` using `SpnegoConfig` case class, for example:
+2.  Instantiate `SpnegoAuthentication` using `SpnegoConfig` case class, for example:
+
 ```scala
 val realm = "EXAMPLE.ORG"
 val principal = s"HTTP/myservice@$realm"
@@ -30,10 +32,10 @@ val cookieName = "http4s.spnego"
 
 val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
 val authentication = new SpnegoAuthentication[IO](cfg)
-``` 
+```
 
-3. Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 
-Wrapped routes will be called successfully *only if* SPNEGO authentication succeded. 
+3.  Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 
+    Wrapped routes will be called successfully _only if_ SPNEGO authentication succeded. 
 
 ```scala
 import cats.effect.Sync
@@ -52,7 +54,8 @@ class LoginEndpoint[F[_]](spnego: SpnegoAuthentication[F])(implicit F: Sync[F]) 
 }
 ```
 
-4. Use routes in your server:
+4.  Use routes in your server:
+
 ```scala
 val login = new LoginEndpoint[IO](authentication)
 val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(login)
@@ -67,11 +70,12 @@ See [tests](http4s-spnego/src/test/scala/io/github/novakovalexey/http4s/spnego) 
 
 ## Testing with test server
 
-1. Make sure Kerberos is installed and configured for your server and client machines.
-2. Configure test server with proper realm, principal, keytab path (see config above)
-3. Authenticated client via `kinit` CLI tool to the same realm used for the server side
-4. Start test server: `sbt 'project test-server' run`
-5. Use `curl` or Web-Browser to initiate a negotiation request (google for that or try this [link](http://www.microhowto.info/howto/configure_firefox_to_authenticate_using_spnego_and_kerberos.html)). Using curl: 
+1.  Make sure Kerberos is installed and configured for your server and client machines.
+2.  Configure test server with proper realm, principal, keytab path (see config above)
+3.  Authenticated client via `kinit` CLI tool to the same realm used for the server side
+4.  Start test server: `sbt 'project test-server' run`
+5.  Use `curl` or Web-Browser to initiate a negotiation request (google for that or try this [link](http://www.microhowto.info/howto/configure_firefox_to_authenticate_using_spnego_and_kerberos.html)). Using curl: 
+
 ```bash
 curl -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt http://<yourserver>:8080/
 ```
