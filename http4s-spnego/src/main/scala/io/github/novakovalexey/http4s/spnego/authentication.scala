@@ -20,7 +20,6 @@ import scala.io.Codec
 import scala.util.{Failure, Success, Try}
 // scala 2.12 needs to be supported
 import scala.collection.JavaConverters._
-import scala.util.control.NonFatal
 
 class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
   logger.info(s"Configuration:\n ${cfg.show}")
@@ -158,17 +157,18 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
         override def run: (Option[Array[Byte]], Option[Token]) = {
           val defaultAcceptor: GSSCredential = null
           val gssContext = gssManager.createContext(defaultAcceptor)
-          try {
+          Try {
             (
               Option(gssContext.acceptSecContext(clientToken, 0, clientToken.length)),
               if (gssContext.isEstablished) Some(tokens.create(gssContext.getSrcName.toString)) else None
             )
-          } catch {
-            case NonFatal(e) =>
+          } match {
+            case Success(r) =>
+              gssContext.dispose()
+              r
+            case Failure(e) =>
               logger.error("error in establishing security context", e)
               throw e
-          } finally {
-            gssContext.dispose()
           }
         }
       }
