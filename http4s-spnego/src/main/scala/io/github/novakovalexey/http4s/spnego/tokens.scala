@@ -13,7 +13,7 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   private def newExpiration: Long = System.currentTimeMillis + tokenValidity
 
   private[spnego] def sign(token: Token): String = {
-    val md = MessageDigest.getInstance("SHA")
+    val md = MessageDigest.getInstance("SHA-256")
     md.update(token.principal.getBytes(UTF_8))
     val bb = ByteBuffer.allocate(8)
     bb.putLong(token.expiration)
