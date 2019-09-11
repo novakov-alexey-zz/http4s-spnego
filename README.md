@@ -35,7 +35,7 @@ val authentication = new SpnegoAuthentication[IO](cfg)
 ```
 
 3.  Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 
-    Wrapped routes will be called successfully _only if_ SPNEGO authentication succeded. 
+    Wrapped routes will be called successfully _only if_ SPNEGO authentication succeeded. 
 
 ```scala
 import cats.effect.Sync
@@ -43,7 +43,7 @@ import cats.implicits._
 import org.http4s.{AuthedRoutes, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 
-class LoginEndpoint[F[_]](spnego: SpnegoAuthentication[F])(implicit F: Sync[F]) extends Http4sDsl[F] {
+class LoginEndpoint[F[_]: Sync](spnego: SpnegoAuthentication[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] =
     spnego.middleware(AuthedRoutes.of[Token, F] {
@@ -72,9 +72,9 @@ See [tests](http4s-spnego/src/test/scala/io/github/novakovalexey/http4s/spnego) 
 
 1.  Make sure Kerberos is installed and configured for your server and client machines.
 2.  Configure test server with proper realm, principal, keytab path (see config above)
-3.  Authenticated client via `kinit` CLI tool to the same realm used for the server side
+3.  Authenticate client via `kinit` CLI tool to the same realm used for the server side
 4.  Start test server: `sbt 'project test-server' run`
-5.  Use `curl` or Web-Browser to initiate a negotiation request (google for that or try this [link](http://www.microhowto.info/howto/configure_firefox_to_authenticate_using_spnego_and_kerberos.html)). Using curl: 
+5.  Use `curl` or Web-Browser to initiate a negotiation request (google for that or try this [link](http://www.microhowto.info/howto/configure_firefox_to_authenticate_using_spnego_and_kerberos.html)). In case you want to test with  `curl`, there is command for that: 
 
 ```bash
 curl -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt http://<yourserver>:8080/
