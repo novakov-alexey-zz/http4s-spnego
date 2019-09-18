@@ -33,8 +33,8 @@ ThisBuild / publishTo := {
 ThisBuild / publishMavenStyle := true
 ThisBuild / organization := "io.github.novakov-alexey"
 
-lazy val scala212 = "2.12.9"
-lazy val scala213 = "2.13.0"
+lazy val scala212 = "2.12.10"
+lazy val scala213 = "2.13.1"
 lazy val supportedScalaVersions = List(scala212, scala213)
 
 def scalacOptionsVersion(scalaVersion: String) = {
