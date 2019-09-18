@@ -4,10 +4,10 @@ import cats.effect._
 import cats.implicits._
 import fs2.Stream
 import org.http4s.dsl.Http4sDsl
+import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.Logger
 import org.http4s.{AuthedRoutes, HttpRoutes}
-import org.http4s.implicits._
 
 import scala.concurrent.duration._
 
@@ -26,10 +26,10 @@ object Main extends IOApp {
     val cookieName = "http4s.spnego"
     val signatureSecret = "secret"
 
-    val cfg = SpnegoConfig(principal, realm, keytab, debug, None, signatureSecret, domain, path, tokenValidity, cookieName)
+    val cfg =
+      SpnegoConfig(principal, realm, keytab, debug, None, signatureSecret, domain, path, tokenValidity, cookieName)
 
-    val spnego = new SpnegoAuthentication[F](cfg)
-    val httpApp = new LoginEndpoint[F](spnego).routes.orNotFound
+    val httpApp = new LoginEndpoint[F](Spnego[F](cfg)).routes.orNotFound
     val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(httpApp)
 
     BlazeServerBuilder[F]
@@ -39,12 +39,12 @@ object Main extends IOApp {
   }
 }
 
-class LoginEndpoint[F[_]: Sync](spnego: SpnegoAuthentication[F]) extends Http4sDsl[F] {
+class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] =
-    spnego.middleware(AuthedRoutes.of[Token, F] {
+    spnego(AuthedRoutes.of[Token, F] {
       case GET -> Root as token =>
-        Ok(s"This page is protected using HTTP SPNEGO authentication; logged in with $token")
-          .map(_.addCookie(spnego.makeCookie(token)))
+        Ok(s"This page is protected using HTTP SPNEGO authentication; logged as ${token.principal}")
+          .map(_.addCookie(spnego.signCookie(token)))
     })
 }

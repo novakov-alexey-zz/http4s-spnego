@@ -3,6 +3,7 @@ import sbtrelease.ReleaseStateTransformations._
 
 //pgpReadOnly := false
 
+// Publishing config //////////////////////////////////////////////////////
 ThisBuild /  publishTo := {
   val nexus = "https://oss.sonatype.org/"
   Some("releases".at(nexus + "service/local/staging/deploy/maven2"))
@@ -33,6 +34,8 @@ ThisBuild / publishTo := {
 ThisBuild / publishMavenStyle := true
 ThisBuild / organization := "io.github.novakov-alexey"
 
+// Publishing config end /////////////////////////////////////////////////////////
+
 lazy val scala212 = "2.12.10"
 lazy val scala213 = "2.13.1"
 lazy val supportedScalaVersions = List(scala212, scala213)
@@ -57,6 +60,7 @@ def scalacOptionsVersion(scalaVersion: String) = {
 }
 
 lazy val sharedSettings = Seq(
+  addCompilerPlugin(kindProjector cross CrossVersion.binary),
   // https://github.com/sbt/sbt-pgp/issues/150
   updateOptions := updateOptions.value.withGigahorse(false),
   scalaVersion := scala213,

@@ -25,7 +25,7 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
   val cookieName = "http4s.spnego"
 
   val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
-  val authentication = new SpnegoAuthentication[IO](cfg)
+  val authentication = new Spnego[IO](cfg)
   val login = new LoginEndpoint[IO](authentication)
 
   val userPrincipal = "myprincipal"
@@ -53,8 +53,8 @@ class SpnegoAuthTest extends FlatSpec with Matchers {
     actualResp.as[String].unsafeRunSync() should include("Failed to parse ")
   }
 
-  def mockKerberos(token: Option[Token]): SpnegoAuthentication[IO] = {
-    new SpnegoAuthentication[IO](cfg) {
+  def mockKerberos(token: Option[Token]): Spnego[IO] = {
+    new Spnego[IO](cfg) {
       override val tokens: Tokens = testTokens
       override val authenticator: SpnegoAuthenticator = new SpnegoAuthenticator(cfg, tokens) {
         override private[spnego] def kerberosAcceptToken(clientToken: Array[Byte]) = {

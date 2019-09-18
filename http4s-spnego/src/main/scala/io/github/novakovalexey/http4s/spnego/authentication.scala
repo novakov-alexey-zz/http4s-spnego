@@ -2,6 +2,7 @@ package io.github.novakovalexey.http4s.spnego
 
 import java.io.IOException
 import java.security.{PrivilegedAction, PrivilegedActionException, PrivilegedExceptionAction}
+import java.util.Collections
 
 import cats.Monad
 import cats.data.{Kleisli, OptionT}
@@ -18,10 +19,14 @@ import org.ietf.jgss.{GSSCredential, GSSManager}
 
 import scala.io.Codec
 import scala.util.{Failure, Success, Try}
-// scala 2.12 needs to be supported
-import scala.collection.JavaConverters._
 
-class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
+object Spnego {
+
+  def apply[F[_]: Monad](cfg: SpnegoConfig): Spnego[F] =
+    new Spnego[F](cfg)
+}
+
+class Spnego[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
   logger.info(s"Configuration:\n ${cfg.show}")
 
   private val secret = Codec.toUTF8(cfg.signatureSecret)
@@ -45,12 +50,15 @@ class SpnegoAuthentication[F[_]: Monad](cfg: SpnegoConfig) extends LazyLogging {
       OptionT.liftF(res.pure[F])
     }
 
+  def apply(service: AuthedRoutes[Token, F]): HttpRoutes[F] =
+    middleware.apply(service)
+
   def middleware(onFailure: AuthedRoutes[Rejection, F]): AuthMiddleware[F, Token] =
     AuthMiddleware(authToken, onFailure)
 
   val middleware: AuthMiddleware[F, Token] = AuthMiddleware(authToken, onFailure)
 
-  def makeCookie(token: Token): ResponseCookie = {
+  def signCookie(token: Token): ResponseCookie = {
     val content = tokens.serialize(token)
     ResponseCookie(cfg.cookieName, content, domain = cfg.domain, path = cfg.path)
   }
@@ -70,9 +78,9 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
 
   private val subject = new Subject(
     false,
-    Set(new KerberosPrincipal(cfg.kerberosPrincipal)).asJava,
-    Set.empty[AnyRef].asJava,
-    Set.empty[AnyRef].asJava
+    Collections.singleton(new KerberosPrincipal(cfg.kerberosPrincipal)),
+    Collections.emptySet(),
+    Collections.emptySet()
   )
 
   private val kerberosConfiguration =
@@ -105,10 +113,17 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
       )
 
       res <- t match {
-        case Right(token) => if (token.expired) None else Some(Right(token))
+        case Right(token) =>
+          if (token.expired) {
+            logger.debug("SPNEGO token inside cookie expired")
+            None
+          } else {
+            logger.debug("SPNEGO token inside cookie not expired")
+            Some(Right(token))
+          }
         case Left(e) => Some(Left(e))
       }
-      _ = logger.debug("spnego token inside cookie not expired")
+
     } yield res
   }
 
@@ -128,13 +143,13 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
   private def kerberosCore(clientToken: Array[Byte]): Either[Rejection, Token] = {
     Try {
       val (maybeServerToken, maybeToken) = kerberosAcceptToken(clientToken)
-      logger.debug("maybeServerToken {} maybeToken {}", maybeServerToken.map(Base64Util.encode), maybeToken)
+      logger.debug(s"serverToken '${maybeServerToken.map(Base64Util.encode)}' token '$maybeToken'")
 
       maybeToken.map { token =>
         logger.debug("received new token")
         Right(token)
       }.getOrElse {
-        logger.debug("no token received but if there is a serverToken then negotiations are ongoing")
+        logger.debug("no token received, but if there is a serverToken, then negotiations are ongoing")
         Left(AuthenticationFailedRejection(CredentialsMissing, challengeHeader(maybeServerToken)))
       }
     } match {
@@ -146,7 +161,7 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
             Left(ServerErrorRejection(e))
           case _ =>
             logger.error("negotiation failed", e)
-            Left(AuthenticationFailedRejection(CredentialsRejected, challengeHeader())) // rejected
+            Left(AuthenticationFailedRejection(CredentialsRejected, challengeHeader()))
         }
       case Failure(e) =>
         logger.error("unexpected error", e)

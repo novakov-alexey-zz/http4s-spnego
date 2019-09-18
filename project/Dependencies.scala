@@ -6,6 +6,7 @@ object Dependencies {
   val http4sCore = "org.http4s" %% "http4s-core" % http4sVersion
   val http4sBlaze = "org.http4s" %% "http4s-blaze-server" % http4sVersion
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
+  val kindProjector = "org.typelevel" % "kind-projector" % "0.10.3"
   //Test
   val http4sDsl = "org.http4s" %% "http4s-dsl" % http4sVersion
   val scalaTest = "org.scalatest" %% "scalatest" % "3.0.8" % Test
