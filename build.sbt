@@ -1,8 +1,7 @@
 import Dependencies._
 import sbtrelease.ReleaseStateTransformations._
 
-useGpg := true
-pgpReadOnly := false
+//pgpReadOnly := false
 
 ThisBuild /  publishTo := {
   val nexus = "https://oss.sonatype.org/"
@@ -91,7 +90,8 @@ lazy val root = project
 
 lazy val `http4s-spnego` = project.settings(
   sharedSettings,
-  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+  //TODO: check it is a reason why publishing is happening two times for the same version
+  //releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   libraryDependencies ++= Seq(
     http4sCore,
     http4sBlaze,
