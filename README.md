@@ -18,7 +18,7 @@ or
 libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.12" % "<version>"
 ```
 
-2.  Instantiate `SpnegoAuthentication` using `SpnegoConfig` case class, for example:
+2.  Instantiate `Spnego` using `SpnegoConfig` case class:
 
 ```scala
 val realm = "EXAMPLE.ORG"
@@ -31,10 +31,10 @@ val tokenValidity: FiniteDuration = 3600.seconds
 val cookieName = "http4s.spnego"
 
 val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
-val authentication = new SpnegoAuthentication[IO](cfg)
+val spnego = Spnego[IO](cfg)
 ```
 
-3.  Wrap AuthedRoutes with SpnegoAuthentication#middleware, so that you can get an instance of SPNEGO token. 
+3.  Wrap AuthedRoutes with spnego#middleware, so that you can get an instance of SPNEGO token. 
     Wrapped routes will be called successfully _only if_ SPNEGO authentication succeeded. 
 
 ```scala
@@ -43,13 +43,13 @@ import cats.implicits._
 import org.http4s.{AuthedRoutes, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 
-class LoginEndpoint[F[_]: Sync](spnego: SpnegoAuthentication[F]) extends Http4sDsl[F] {
+class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] =
-    spnego.middleware(AuthedRoutes.of[Token, F] {
+    spnego(AuthedRoutes.of[Token, F] {
       case GET -> Root as token =>
         Ok(s"This page is protected using HTTP SPNEGO authentication; logged in as $token")
-          .map(_.addCookie(spnego.makeCookie(token)))
+          .map(_.addCookie(spnego.signCookie(token)))
     })
 }
 ```
@@ -57,7 +57,7 @@ class LoginEndpoint[F[_]: Sync](spnego: SpnegoAuthentication[F]) extends Http4sD
 4.  Use routes in your server:
 
 ```scala
-val login = new LoginEndpoint[IO](authentication)
+val login = new LoginEndpoint[IO](spnego)
 val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(login)
 
 BlazeServerBuilder[F]
