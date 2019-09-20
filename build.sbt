@@ -9,6 +9,8 @@ ThisBuild /  publishTo := {
   Some("releases".at(nexus + "service/local/staging/deploy/maven2"))
 }
 
+publishTo := sonatypePublishToBundle.value
+
 ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 ThisBuild / scmInfo := Some(
   ScmInfo(
@@ -77,7 +79,8 @@ releaseProcess ++= (if (sys.env.contains("RELEASE_VERSION_BUMP"))
     setReleaseVersion,
     commitReleaseVersion,
     tagRelease,
-    releaseStepCommandAndRemaining("+publishSigned")
+    releaseStepCommandAndRemaining("+publishSigned"),
+    releaseStepCommand("sonatypeBundleRelease")
   )
 else Seq.empty[ReleaseStep])
 releaseProcess ++= (if (sys.env.contains("RELEASE_PUBLISH"))
