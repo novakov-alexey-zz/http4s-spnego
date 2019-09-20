@@ -94,6 +94,8 @@ lazy val root = project
 
 lazy val `http4s-spnego` = project.settings(
   sharedSettings,
+  publishArtifact := true,
+  releaseCrossBuild := true,
   //TODO: check it is a reason why publishing is happening two times for the same version
   //releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   libraryDependencies ++= Seq(
@@ -114,6 +116,7 @@ lazy val `test-server` = project
     publish := {},
     publishLocal := {},
     publishArtifact := false,
+    releaseCrossBuild := false,
     dockerExposedPorts ++= Seq(8080)
   )
   .dependsOn(`http4s-spnego`)
