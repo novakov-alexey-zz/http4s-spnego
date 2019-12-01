@@ -1,7 +1,7 @@
 import sbt._
 
 object Dependencies {
-  lazy val http4sVersion = "0.21.0-M5"
+  lazy val http4sVersion = "0.21.0-M6"
 
   val http4sCore = "org.http4s" %% "http4s-core" % http4sVersion
   val http4sBlaze = "org.http4s" %% "http4s-blaze-server" % http4sVersion
