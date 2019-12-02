@@ -6,13 +6,14 @@ import cats.effect.{ContextShift, IO}
 import org.http4s._
 import org.http4s.headers.Authorization
 import org.http4s.implicits._
-import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.io.Codec
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SpnegoAuthTest extends FlatSpec with Matchers {
+class SpnegoAuthTest extends AnyFlatSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   val realm = "EXAMPLE.ORG"
