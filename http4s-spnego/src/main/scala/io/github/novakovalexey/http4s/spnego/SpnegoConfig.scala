@@ -15,13 +15,7 @@ final case class SpnegoConfig(
   jaasConfig: Option[JaasConfig] = None
 )
 
-final case class JaasConfig(
-  principal: String,
-  keytab: String,
-  debug: Boolean,
-  ticketCache: Option[String],
-  isInitiator: Boolean = false
-)
+final case class JaasConfig(keytab: String, debug: Boolean, ticketCache: Option[String], isInitiator: Boolean = false)
 
 object SpnegoConfig {
   val JaasConfigEntryName = "Server"

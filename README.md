@@ -40,7 +40,7 @@ val cfg = SpnegoConfig(
     path,
     tokenValidity,
     cookieName,
-    Some(JaasConfig(principal, keytab, debug, None)) // option 1
+    Some(JaasConfig(keytab, debug, None)) // option 1
   )
 
 val spnego = Spnego[IO](cfg)
