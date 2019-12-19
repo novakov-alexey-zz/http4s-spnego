@@ -12,7 +12,7 @@ import com.typesafe.scalalogging.LazyLogging
 import io.github.novakovalexey.http4s.spnego.SpnegoAuthenticator._
 import javax.security.auth.Subject
 import javax.security.auth.kerberos.KerberosPrincipal
-import javax.security.auth.login.LoginContext
+import javax.security.auth.login.{Configuration, LoginContext}
 import org.http4s._
 import org.http4s.server.AuthMiddleware
 import org.ietf.jgss.{GSSCredential, GSSManager}
@@ -78,16 +78,29 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
 
   private val subject = new Subject(
     false,
-    Collections.singleton(new KerberosPrincipal(cfg.kerberosPrincipal)),
+    Collections.singleton(new KerberosPrincipal(cfg.principal)),
     Collections.emptySet(),
     Collections.emptySet()
   )
 
-  private val kerberosConfiguration =
-    KerberosConfiguration(cfg.kerberosKeytab, cfg.kerberosPrincipal, cfg.kerberosDebug, cfg.kerberosTicketCache)
+  private val (entryName, kerberosConfiguration) =
+    cfg.jaasConfig match {
+      case Some(c) => ("", KerberosConfiguration(c))
+      case None => (SpnegoConfig.JaasConfigEntryName, null.asInstanceOf[Configuration])
+    }
 
   private val noCallback = null
-  private val loginContext = new LoginContext("", subject, noCallback, kerberosConfiguration)
+  private val loginContext =
+    Try(new LoginContext(entryName, subject, noCallback, kerberosConfiguration))
+      .fold(
+        e =>
+          throw new RuntimeException(
+            "In case of JAAS file is used, please check that java.security.auth.login.config Java property is set",
+            e
+        ),
+        identity
+      )
+
   loginContext.login()
 
   private[spnego] def apply(hs: Headers): Either[Rejection, Token] =

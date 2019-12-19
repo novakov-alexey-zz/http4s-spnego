@@ -1,17 +1,17 @@
 package io.github.novakovalexey.http4s.spnego
 
-import cats.implicits._
 import cats.data.{Kleisli, OptionT}
 import cats.effect.{ContextShift, IO}
+import cats.implicits._
 import org.http4s._
 import org.http4s.headers.Authorization
 import org.http4s.implicits._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.io.Codec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
 class SpnegoAuthTest extends AnyFlatSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
@@ -25,7 +25,16 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
   val tokenValidity: FiniteDuration = 3600.seconds
   val cookieName = "http4s.spnego"
 
-  val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
+  val cfg = SpnegoConfig(
+    realm,
+    principal,
+    "secret",
+    domain,
+    path,
+    tokenValidity,
+    cookieName,
+    Some(JaasConfig(principal, keytab, debug, None))
+  )
   val spnego = new Spnego[IO](cfg)
   val login = new LoginEndpoint[IO](spnego)
 
@@ -67,7 +76,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
 
   it should "reject token if Kerberos failed" in {
     //given
-    val route =  loginRoute(None)
+    val route = loginRoute(None)
     val clientToken = "test"
     val req2 = Request[IO]().putHeaders(Header("Authorization", s"${SpnegoAuthenticator.Negotiate} $clientToken"))
     //when

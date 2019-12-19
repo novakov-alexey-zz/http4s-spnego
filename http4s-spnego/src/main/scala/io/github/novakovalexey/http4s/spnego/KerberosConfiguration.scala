@@ -4,12 +4,11 @@ import java.util
 
 import javax.security.auth.login.{AppConfigurationEntry, Configuration}
 
-case class KerberosConfiguration(keytab: String, principal: String, debug: Boolean, ticketCache: Option[String])
-    extends Configuration {
+case class KerberosConfiguration(jaasCfg: JaasConfig) extends Configuration {
 
   val cfg = new util.HashMap[String, String]()
-  cfg.put("keyTab", keytab)
-  cfg.put("principal", principal)
+  cfg.put("keyTab", jaasCfg.keytab)
+  cfg.put("principal", jaasCfg.principal)
   cfg.put("useKeyTab", "true")
   cfg.put("storeKey", "true")
   cfg.put("doNotPrompt", "true")
@@ -17,8 +16,8 @@ case class KerberosConfiguration(keytab: String, principal: String, debug: Boole
   cfg.put("renewTGT", "true")
   cfg.put("isInitiator", "false")
   cfg.put("refreshKrb5Config", "true")
-  cfg.put("debug", debug.toString)
-  ticketCache.foreach(tc => cfg.put("ticketCache", tc))
+  cfg.put("debug", jaasCfg.debug.toString)
+  jaasCfg.ticketCache.foreach(tc => cfg.put("ticketCache", tc))
 
   override def getAppConfigurationEntry(name: String): Array[AppConfigurationEntry] = Array(
     new AppConfigurationEntry(

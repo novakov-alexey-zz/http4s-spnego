@@ -26,8 +26,8 @@ object Main extends IOApp {
     val cookieName = "http4s.spnego"
     val signatureSecret = "secret"
 
-    val cfg =
-      SpnegoConfig(principal, realm, keytab, debug, None, signatureSecret, domain, path, tokenValidity, cookieName)
+    val cfg = SpnegoConfig(realm, principal, signatureSecret, domain, path, tokenValidity, cookieName)
+    System.setProperty("java.security.auth.login.config", "test-server/src/main/resources/server-jaas.conf")
 
     val httpApp = new LoginEndpoint[F](Spnego[F](cfg)).routes.orNotFound
     val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(httpApp)
