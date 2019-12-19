@@ -85,7 +85,7 @@ private[spnego] class SpnegoAuthenticator(cfg: SpnegoConfig, tokens: Tokens) ext
 
   private val (entryName, kerberosConfiguration) =
     cfg.jaasConfig match {
-      case Some(c) => ("", KerberosConfiguration(c))
+      case Some(c) => ("", KerberosConfiguration(cfg.principal, c))
       case None => (SpnegoConfig.JaasConfigEntryName, null.asInstanceOf[Configuration])
     }
 

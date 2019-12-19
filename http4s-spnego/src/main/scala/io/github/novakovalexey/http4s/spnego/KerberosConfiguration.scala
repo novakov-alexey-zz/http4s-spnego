@@ -4,11 +4,11 @@ import java.util
 
 import javax.security.auth.login.{AppConfigurationEntry, Configuration}
 
-case class KerberosConfiguration(jaasCfg: JaasConfig) extends Configuration {
+case class KerberosConfiguration(principal: String, jaasCfg: JaasConfig) extends Configuration {
 
   val cfg = new util.HashMap[String, String]()
   cfg.put("keyTab", jaasCfg.keytab)
-  cfg.put("principal", jaasCfg.principal)
+  cfg.put("principal", principal)
   cfg.put("useKeyTab", "true")
   cfg.put("storeKey", "true")
   cfg.put("doNotPrompt", "true")
