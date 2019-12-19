@@ -18,9 +18,12 @@ or
 libraryDependencies += "io.github.novakov-alexey" % "http4s-spnego_2.12" % "<version>"
 ```
 
-2.  Instantiate `Spnego` using `SpnegoConfig` case class:
+2.  Instantiate `Spnego` using `SpnegoConfig` and `JaasConfig` case classes:
 
 ```scala
+import io.github.novakovalexey.http4s.spnego.SpnegoConfig
+import io.github.novakovalexey.http4s.spnego.JaasConfig
+
 val realm = "EXAMPLE.ORG"
 val principal = s"HTTP/myservice@$realm"
 val keytab = "/etc/krb5.keytab"
@@ -29,10 +32,27 @@ val domain = Some("myservice")
 val path: Option[String] = None
 val tokenValidity: FiniteDuration = 3600.seconds
 val cookieName = "http4s.spnego"
+val cfg = SpnegoConfig(
+    realm,
+    principal,
+    "secret",
+    domain,
+    path,
+    tokenValidity,
+    cookieName,
+    Some(JaasConfig(keytab, debug, None)) // option 1
+  )
 
-val cfg = SpnegoConfig(principal, realm, keytab, debug, None, "secret", domain, path, tokenValidity, cookieName)
 val spnego = Spnego[IO](cfg)
 ```
+
+JaasConfig can be also set to `None` value (option 2) in order pass JaasConfig via standard JAAS file. For example:
+ 
+```scala
+System.setProperty("java.security.auth.login.config", "test-server/src/main/resources/server-jaas.conf")
+```
+
+See example of standard JAAS file at `test-server/src/main/resources/server-jaas.conf`
 
 3.  Wrap AuthedRoutes with spnego#middleware, so that you can get an instance of SPNEGO token. 
     Wrapped routes will be called successfully _only if_ SPNEGO authentication succeeded. 
