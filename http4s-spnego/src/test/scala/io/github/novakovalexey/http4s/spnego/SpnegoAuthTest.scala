@@ -33,7 +33,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     path,
     tokenValidity,
     cookieName,
-    Some(JaasConfig(principal, keytab, debug, None))
+    Some(JaasConfig(keytab, debug, None))
   )
   val spnego = new Spnego[IO](cfg)
   val login = new LoginEndpoint[IO](spnego)
