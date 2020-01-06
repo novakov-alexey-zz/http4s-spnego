@@ -74,6 +74,7 @@ releaseProcess ++= (if (sys.env.contains("RELEASE_VERSION_BUMP"))
   Seq[ReleaseStep](
     checkSnapshotDependencies,
     inquireVersions,
+    releaseStepCommandAndRemaining("+test"),
     setReleaseVersion,
     commitReleaseVersion,
     tagRelease,
