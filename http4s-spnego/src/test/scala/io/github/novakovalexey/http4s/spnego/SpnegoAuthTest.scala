@@ -104,7 +104,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     val route = loginRoute(None)
 
     //given
-    val req = Request[IO]().addCookie(RequestCookie(cookieName, s"$userPrincipal&a&b"))
+    val req = Request[IO]().addCookie(RequestCookie(cookieName, s"$userPrincipal&a&b&c"))
     //when
     val res = route.run(req)
     //then
@@ -114,8 +114,9 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return authenticated token" in {
+    val attribute = "groupId=1"
     //given
-    val route = loginRoute(Some(testTokens.create(userPrincipal)))
+    val route = loginRoute(Some(testTokens.create(userPrincipal).copy(attributes = attribute)))
     val initReq = Request[IO]()
     //when
     val res1 = route.run(initReq)
@@ -134,10 +135,12 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     okResponse.cookies.headOption.map(_.name should ===(cookieName)).getOrElse(fail())
 
     val cookie = okResponse.cookies.headOption.map(_.content).getOrElse(fail())
-    val token = testTokens.parse(cookie)
-    token.isRight should ===(true)
-    token.getOrElse(fail()).principal should ===(userPrincipal)
-    token.getOrElse(fail()).expiration should be > System.currentTimeMillis()
+    val tokenOrError = testTokens.parse(cookie)
+    tokenOrError.isRight should ===(true)
+    val token = tokenOrError.getOrElse(fail())
+    token.principal should ===(userPrincipal)
+    token.expiration should be > System.currentTimeMillis()
+    token.attributes should ===(attribute)
 
     //given
     val req3 = Request[IO]().addCookie(RequestCookie(cookieName, cookie))
