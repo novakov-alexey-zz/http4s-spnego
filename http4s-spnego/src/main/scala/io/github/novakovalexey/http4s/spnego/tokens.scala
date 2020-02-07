@@ -15,6 +15,7 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   private[spnego] def sign(token: Token): String = {
     val md = MessageDigest.getInstance("SHA-256")
     md.update(token.principal.getBytes(UTF_8))
+    md.update(token.attributes.getBytes(UTF_8))
     val bb = ByteBuffer.allocate(8)
     bb.putLong(token.expiration)
     md.update(bb.array)
@@ -26,10 +27,10 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
     Token(principal, newExpiration)
 
   def parse(tokenString: String): Either[TokenError, Token] = tokenString.split("&").toList match {
-    case principal :: expirationString :: signature :: Nil =>
+    case principal :: expirationString :: attributes :: signature :: Nil =>
       Try(expirationString.toLong) match {
         case Success(expiration) =>
-          val token = Token(principal, expiration)
+          val token = Token(principal, expiration, attributes)
           Either.cond(sign(token) == signature, token, TokenParseError("incorrect signature"))
         case _ => Left(TokenParseError("expiration not a long"))
       }
@@ -37,9 +38,9 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   }
 
   def serialize(token: Token): String =
-    List(token.principal, token.expiration, sign(token)).mkString("&")
+    List(token.principal, token.expiration, token.attributes, sign(token)).mkString("&")
 }
 
-case class Token private[spnego] (principal: String, expiration: Long) {
+case class Token private[spnego] (principal: String, expiration: Long, attributes: String = "") {
   def expired: Boolean = System.currentTimeMillis > expiration
 }
