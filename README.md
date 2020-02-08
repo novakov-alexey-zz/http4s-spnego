@@ -68,7 +68,7 @@ class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
   val routes: HttpRoutes[F] =
     spnego(AuthedRoutes.of[Token, F] {
       case GET -> Root as token =>
-        Ok(s"This page is protected using HTTP SPNEGO authentication; logged in as $token")
+        Ok(s"This page is protected using HTTP SPNEGO authentication; logged in as ${token.principal}")
           .map(_.addCookie(spnego.signCookie(token)))
     })
 }
@@ -85,6 +85,26 @@ BlazeServerBuilder[F]
   .withHttpApp(finalHttpApp)
   .serve
 ```
+
+## Add property to the Token
+
+If you need to add more fields into JWT token, there is a special String field `Token.attributes`:
+
+```scala
+// this route is used to create cookie once SPNEGO is done
+case GET -> Root as token =>
+   val id = "groupId=1"
+   Ok(s"logged in as ${token.principal}")
+      .map(_.addCookie(spnego.signCookie(token.copy(attributes = id))))
+
+// this route takes already authenticated user and its token 
+case POST -> Root as token =>
+   val id = token.attributes
+   // do something with id
+   Ok("processed")      
+```
+
+Added field will be used to create a JWT signature.
 
 See [tests](http4s-spnego/src/test/scala/io/github/novakovalexey/http4s/spnego) and [test-server](test-server/src/main/scala/io/github/novakovalexey/http4s/spnego/Main.scala) module for more examples.
 
