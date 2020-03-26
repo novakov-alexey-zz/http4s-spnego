@@ -86,7 +86,7 @@ releaseProcess ++= (if (sys.env.contains("RELEASE_PUBLISH"))
   Seq[ReleaseStep](inquireVersions, setNextVersion, commitNextVersion, pushChanges)
 else Seq.empty[ReleaseStep])
 
-lazy val root = project
+lazy val `http4s-spnego-root` = project
   .in(file("."))
   .aggregate(`http4s-spnego`, `test-server`)
   .settings(
