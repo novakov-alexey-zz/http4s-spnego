@@ -19,11 +19,12 @@ case class KerberosConfiguration(principal: String, jaasCfg: JaasConfig) extends
   cfg.put("debug", jaasCfg.debug.toString)
   jaasCfg.ticketCache.foreach(tc => cfg.put("ticketCache", tc))
 
-  override def getAppConfigurationEntry(name: String): Array[AppConfigurationEntry] = Array(
-    new AppConfigurationEntry(
-      "com.sun.security.auth.module.Krb5LoginModule",
-      AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
-      cfg
+  override def getAppConfigurationEntry(name: String): Array[AppConfigurationEntry] =
+    Array(
+      new AppConfigurationEntry(
+        "com.sun.security.auth.module.Krb5LoginModule",
+        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
+        cfg
+      )
     )
-  )
 }

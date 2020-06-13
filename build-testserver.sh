@@ -1,3 +1,3 @@
 #!/bin/sh
-sbt 'project test-server' clean compile stage
-docker build -t test-server test-server/
+mill test-server.compile test-server.packageIt
+docker build -t test-server . -f test-server/Dockerfile
