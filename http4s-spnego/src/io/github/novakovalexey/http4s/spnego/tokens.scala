@@ -26,16 +26,17 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   def create(principal: String): Token =
     Token(principal, newExpiration)
 
-  def parse(tokenString: String): Either[TokenError, Token] = tokenString.split("&").toList match {
-    case principal :: expirationString :: attributes :: signature :: Nil =>
-      Try(expirationString.toLong) match {
-        case Success(expiration) =>
-          val token = Token(principal, expiration, attributes)
-          Either.cond(sign(token) == signature, token, TokenParseError("incorrect signature"))
-        case _ => Left(TokenParseError("expiration not a long"))
-      }
-    case _ => Left(TokenParseError("incorrect number of fields"))
-  }
+  def parse(tokenString: String): Either[TokenError, Token] =
+    tokenString.split("&").toList match {
+      case principal :: expirationString :: attributes :: signature :: Nil =>
+        Try(expirationString.toLong) match {
+          case Success(expiration) =>
+            val token = Token(principal, expiration, attributes)
+            Either.cond(sign(token) == signature, token, TokenParseError("incorrect signature"))
+          case _ => Left(TokenParseError("expiration not a long"))
+        }
+      case _ => Left(TokenParseError("incorrect number of fields"))
+    }
 
   def serialize(token: Token): String =
     List(token.principal, token.expiration, token.attributes, sign(token)).mkString("&")

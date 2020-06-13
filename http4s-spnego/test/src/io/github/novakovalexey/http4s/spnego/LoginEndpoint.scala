@@ -15,6 +15,6 @@ class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] = spnego.middleware(authRoutes)
 
-  def routes(onFailure: AuthedRoutes[Rejection, F]):  HttpRoutes[F] =
+  def routes(onFailure: AuthedRoutes[Rejection, F]): HttpRoutes[F] =
     spnego.middleware(onFailure)(authRoutes)
 }

@@ -3,3 +3,5 @@ target
 .bloop
 .metals
 metals.sbt
+.idea_modules
+out

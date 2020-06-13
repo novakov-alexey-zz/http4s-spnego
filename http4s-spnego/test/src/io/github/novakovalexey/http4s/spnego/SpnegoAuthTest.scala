@@ -63,13 +63,14 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     actualResp.as[String].unsafeRunSync() should include("Failed to parse ")
   }
 
-  def mockKerberos(token: Option[Token], tokens: Tokens = testTokens): Spnego[IO] = {
+  def mockKerberos(token: Option[Token], mockTokens: Tokens = testTokens): Spnego[IO] = {
     new Spnego[IO](cfg) {
-      override val tokens: Tokens = testTokens
-      override val authenticator: SpnegoAuthenticator = new SpnegoAuthenticator(cfg, tokens) {
-        override private[spnego] def kerberosAcceptToken(clientToken: Array[Byte]) = {
-          (None, token)
-        }
+      override lazy val tokens: Tokens = mockTokens
+      override val authenticator: SpnegoAuthenticator[IO] = new SpnegoAuthenticator[IO](cfg, mockTokens) {
+        override private[spnego] def kerberosAcceptToken(
+          clientToken: Array[Byte]
+        ): IO[(Option[Array[Byte]], Option[Token])] =
+          IO((None, token))
       }
     }
   }
@@ -174,7 +175,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
   }
 
   def loginRoute(token: Option[Token], tokens: Tokens = testTokens): Kleisli[IO, Request[IO], Response[IO]] = {
-    val authentication = mockKerberos(token)
+    val authentication = mockKerberos(token, tokens)
     val login = new LoginEndpoint[IO](authentication)
     login.routes.orNotFound
   }
