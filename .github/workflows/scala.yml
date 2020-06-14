@@ -45,11 +45,18 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11.0.x
+      - uses: jodersky/setup-mill@master
+        with:
+          mill-version: 0.7.3
       - name: Publish
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+        env:
+          SONATYPE_CREDENTIALS: ${{ secrets.SONATYPE_CREDENTIALS }}
+          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
         run: |
-          echo "${{ secrets.PGP_SECRET_KEY }}" > private.key
-          gpg --batch --yes --import private.key
+          echo "${{ secrets.PGP_SECRET_KEY }}" | base64 --decode > private.key
+          gpg --batch --yes --no-tty --import private.key
           rm private.key
+          export GPG_TTY=$(tty)
 
-          ./mill mill.scalalib.PublishModule/publishAll --sonatypeCreds ${{ secrets.SONATYPE_CREDENTIALS }} --publishArtifacts __.publishArtifacts --readTimeout 600000 --release true
+          mill mill.scalalib.PublishModule/publishAll __.publishArtifacts novakov.alex:$SONATYPE_CREDENTIALS --gpgArgs --passphrase=$GPG_PASSWORD,--batch,--yes,-a,-b,--pinentry-mode,loopback

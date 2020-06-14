@@ -49,10 +49,10 @@ val spnego = Spnego[IO](cfg)
 JaasConfig can be also set to `None` value (option 2) in order pass JaasConfig via standard JAAS file. For example:
  
 ```scala
-System.setProperty("java.security.auth.login.config", "test-server/src/main/resources/server-jaas.conf")
+System.setProperty("java.security.auth.login.config", "test-server/resources/server-jaas.conf")
 ```
 
-See example of standard JAAS file at `test-server/src/main/resources/server-jaas.conf`
+See example of standard JAAS file at `test-server/resources/server-jaas.conf`
 
 3.  Wrap AuthedRoutes with spnego#middleware, so that you can get an instance of SPNEGO token. 
     Wrapped routes will be called successfully _only if_ SPNEGO authentication succeeded. 
@@ -106,7 +106,7 @@ case POST -> Root as token =>
 
 Added field will be used to create a JWT signature.
 
-See [tests](http4s-spnego/src/test/scala/io/github/novakovalexey/http4s/spnego) and [test-server](test-server/src/main/scala/io/github/novakovalexey/http4s/spnego/Main.scala) module for more examples.
+See [tests](http4s-spnego/test/src/io/github/novakovalexey/http4s/spnego) and [test-server](test-server/src/io/github/novakovalexey/http4s/spnego/Main.scala) module for more examples.
 
 ## Testing with test server
 
