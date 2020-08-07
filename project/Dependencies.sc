@@ -25,6 +25,6 @@ object Dependencies {
   )
 
   lazy val tests = Agg(
-    ivy"org.scalatest::scalatest:3.2.0"
+    ivy"org.scalatest::scalatest:3.2.1"
   ) ++ http4sDsl
 }
