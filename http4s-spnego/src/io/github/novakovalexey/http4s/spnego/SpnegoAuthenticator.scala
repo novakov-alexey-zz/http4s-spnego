@@ -100,9 +100,9 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
       token <- authHeader match {
         case Some(header) =>
           logger.debug("authorization header found") *> Base64Util
-                .decode(header.value.substring(Negotiate.length).trim)
-                .some
-                .pure[F]
+            .decode(header.value.substring(Negotiate.length).trim)
+            .some
+            .pure[F]
         case _ => Option.empty[Array[Byte]].pure[F]
       }
     } yield token
@@ -127,10 +127,10 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
           case Some(t) => logger.debug("received new token") *> t.asRight[Rejection].pure[F]
           case _ =>
             logger.debug("no token received, but if there is a serverToken, then negotiations are ongoing") *> Either
-                  .left[Rejection, Token](
-                    AuthenticationFailedRejection(CredentialsMissing, challengeHeader(maybeServerToken))
-                  )
-                  .pure[F]
+              .left[Rejection, Token](
+                AuthenticationFailedRejection(CredentialsMissing, challengeHeader(maybeServerToken))
+              )
+              .pure[F]
         }
       } yield token
     }.recoverWith {
@@ -140,8 +140,8 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
             logger.error(e)("server error") *> Either.left[Rejection, Token](ServerErrorRejection(e)).pure[F]
           case _ =>
             logger.error(e)("negotiation failed") *> Either
-                  .left[Rejection, Token](AuthenticationFailedRejection(CredentialsRejected, challengeHeader()))
-                  .pure[F]
+              .left[Rejection, Token](AuthenticationFailedRejection(CredentialsRejected, challengeHeader()))
+              .pure[F]
         }
       case e =>
         logger.error(e)("unexpected error") *> Either.left[Rejection, Token](UnexpectedErrorRejection(e)).pure[F]
@@ -168,5 +168,5 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
 
   private def initiateNegotiations: F[Either[Rejection, Token]] =
     logger.debug("no negotiation header found, initiating negotiations") *>
-        Either.left[Rejection, Token](AuthenticationFailedRejection(CredentialsMissing, challengeHeader())).pure[F]
+      Either.left[Rejection, Token](AuthenticationFailedRejection(CredentialsMissing, challengeHeader())).pure[F]
 }
