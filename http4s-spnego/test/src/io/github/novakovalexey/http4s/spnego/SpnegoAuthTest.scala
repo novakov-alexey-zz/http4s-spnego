@@ -3,6 +3,9 @@ package io.github.novakovalexey.http4s.spnego
 import cats.data.{Kleisli, OptionT}
 import cats.effect.{ContextShift, IO}
 import cats.implicits._
+import io.chrisdavenport.log4cats.SelfAwareStructuredLogger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import io.github.novakovalexey.http4s.spnego.SpnegoAuthenticator.login
 import org.http4s._
 import org.http4s.headers.Authorization
 import org.http4s.implicits._
@@ -35,16 +38,19 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     cookieName,
     Some(JaasConfig(keytab, debug, None))
   )
-  val spnego = new Spnego[IO](cfg)
-  val login = new LoginEndpoint[IO](spnego)
+  val testTokens = new Tokens(cfg.tokenValidity.toMillis, Codec.toUTF8(cfg.signatureSecret))
+  val authenticator = SpnegoAuthenticator[IO](cfg, testTokens).unsafeRunSync()
+  implicit lazy val logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+  val spnego = new Spnego[IO](cfg, testTokens, authenticator)
+  val loginEndpoint = new LoginEndpoint[IO](spnego)
+  val authorizationHeader = "Authorization"
 
   val userPrincipal = "myprincipal"
-  val testTokens = new Tokens(cfg.tokenValidity.toMillis, Codec.toUTF8(cfg.signatureSecret))
 
   it should "reject invalid authorization token" in {
     val req = Request[IO]().putHeaders(Authorization(Credentials.Token(SpnegoAuthenticator.Negotiate.ci, "test")))
 
-    val route = login.routes.orNotFound
+    val route = loginEndpoint.routes.orNotFound
     val res = route.run(req)
     val actualResp = res.unsafeRunSync
 
@@ -55,7 +61,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
   it should "reject invalid cookie" in {
     val req = Request[IO]().addCookie(cookieName, "myprincipal&1566120533815&0zjbRRVXDFlDYfRurlxaySKWhgE=")
 
-    val route = login.routes.orNotFound
+    val route = loginEndpoint.routes.orNotFound
     val res = route.run(req)
     val actualResp = res.unsafeRunSync
 
@@ -63,23 +69,24 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     actualResp.as[String].unsafeRunSync() should include("Failed to parse ")
   }
 
-  def mockKerberos(token: Option[Token], mockTokens: Tokens = testTokens): Spnego[IO] = {
-    new Spnego[IO](cfg) {
-      override lazy val tokens: Tokens = mockTokens
-      override val authenticator: SpnegoAuthenticator[IO] = new SpnegoAuthenticator[IO](cfg, mockTokens) {
-        override private[spnego] def kerberosAcceptToken(
-          clientToken: Array[Byte]
-        ): IO[(Option[Array[Byte]], Option[Token])] =
-          IO((None, token))
-      }
+  def mockKerberos(token: Option[AuthToken], mockTokens: Tokens = testTokens): Spnego[IO] = {
+    val authenticator = for {
+      (lc, manager) <- login[IO](cfg)
+    } yield new SpnegoAuthenticator[IO](cfg, mockTokens, lc, manager) {
+      override private[spnego] def kerberosAcceptToken(
+        clientToken: Array[Byte]
+      ): IO[(Option[Array[Byte]], Option[AuthToken])] =
+        IO((None, token))
     }
+
+    new Spnego[IO](cfg, mockTokens, authenticator.unsafeRunSync())
   }
 
   it should "reject token if Kerberos failed" in {
     //given
     val route = loginRoute(None)
     val clientToken = "test"
-    val req2 = Request[IO]().putHeaders(Header("Authorization", s"${SpnegoAuthenticator.Negotiate} $clientToken"))
+    val req2 = Request[IO]().putHeaders(Header(authorizationHeader, s"${SpnegoAuthenticator.Negotiate} $clientToken"))
     //when
     val res2 = route.run(req2)
     val actualResp = res2.unsafeRunSync
@@ -98,7 +105,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     //then
     val actualResp = res.unsafeRunSync()
     actualResp.status should ===(Status.Unauthorized)
-    actualResp.as[String].unsafeRunSync() should include("incorrect number of fields")
+    actualResp.as[String].unsafeRunSync() should include(Tokens.wrongFieldsError)
   }
 
   it should "reject invalid expiration parameter in cookie token" in {
@@ -111,7 +118,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     //then
     val actualResp = res.unsafeRunSync()
     actualResp.status should ===(Status.Unauthorized)
-    actualResp.as[String].unsafeRunSync() should include("expiration not a long")
+    actualResp.as[String].unsafeRunSync() should include(Tokens.wrongTypeError)
   }
 
   it should "return authenticated token" in {
@@ -126,7 +133,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
 
     //given
     val clientToken = "test"
-    val req2 = Request[IO]().putHeaders(Header("Authorization", s"${SpnegoAuthenticator.Negotiate} $clientToken"))
+    val req2 = Request[IO]().putHeaders(Header(authorizationHeader, s"${SpnegoAuthenticator.Negotiate} $clientToken"))
     //when
     val okResponse = route.run(req2).unsafeRunSync
 
@@ -156,7 +163,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     val noTokenValidity = new Tokens(0.millisecond.toMillis, Codec.toUTF8(cfg.signatureSecret))
     val routes = loginRoute(Some(noTokenValidity.create(userPrincipal)), noTokenValidity)
     val signature = "test"
-    val req = Request[IO]().putHeaders(Header("Authorization", s"${SpnegoAuthenticator.Negotiate} $signature"))
+    val req = Request[IO]().putHeaders(Header(authorizationHeader, s"${SpnegoAuthenticator.Negotiate} $signature"))
     //when
     val io = routes.run(req)
     val resp = io.unsafeRunSync
@@ -174,13 +181,13 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
     res3.unsafeRunSync().status should ===(Status.Unauthorized)
   }
 
-  def loginRoute(token: Option[Token], tokens: Tokens = testTokens): Kleisli[IO, Request[IO], Response[IO]] = {
+  def loginRoute(token: Option[AuthToken], tokens: Tokens = testTokens): Kleisli[IO, Request[IO], Response[IO]] = {
     val authentication = mockKerberos(token, tokens)
     val login = new LoginEndpoint[IO](authentication)
     login.routes.orNotFound
   }
 
-  it should "allow custom onFailure hander" in {
+  it should "allow custom onFailure handler" in {
     val login = new LoginEndpoint[IO](spnego)
     val onFailure: AuthedRoutes[Rejection, IO] = Kleisli { _ =>
       val res = Response[IO](Status.BadRequest).putHeaders(Header("test 1", "test 2")).withEntity("test entity")

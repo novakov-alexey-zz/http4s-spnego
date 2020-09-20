@@ -71,7 +71,6 @@ object `test-server` extends ScalaModule {
     val allJars = packageSelfModules() ++ runClasspath()
       .map(_.path)
       .filter(path => exists(path) && !path.isDir)
-      .toSeq
 
     allJars.foreach { file =>
       cp.into(file, libDir)
@@ -96,7 +95,7 @@ object `test-server` extends ScalaModule {
         .zip(module.artifactId)
         .map {
           case ((jar, name), suffix) =>
-            val namedJar = jar.path / up / s"${name}${suffix}.jar"
+            val namedJar = jar.path / up / s"$name$suffix.jar"
             cp(jar.path, namedJar)
 
             namedJar

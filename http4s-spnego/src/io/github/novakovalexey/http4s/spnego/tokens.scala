@@ -4,15 +4,22 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 
+import io.github.novakovalexey.http4s.spnego.Tokens.{wrongFieldsError, wrongTypeError}
+
 import scala.util.{Success, Try}
 
 sealed abstract class TokenError(val message: String)
 case class TokenParseError(override val message: String) extends TokenError(message)
 
+private[spnego] object Tokens {
+  val wrongTypeError = "expiration field type is not long"
+  val wrongFieldsError = "wrong number of fields"
+}
+
 class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
   private def newExpiration: Long = System.currentTimeMillis + tokenValidity
 
-  private[spnego] def sign(token: Token): String = {
+  private[spnego] def sign(token: AuthToken): String = {
     val md = MessageDigest.getInstance("SHA-256")
     md.update(token.principal.getBytes(UTF_8))
     md.update(token.attributes.getBytes(UTF_8))
@@ -23,25 +30,25 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
     Base64Util.encode(md.digest)
   }
 
-  def create(principal: String): Token =
-    Token(principal, newExpiration)
+  def create(principal: String): AuthToken =
+    AuthToken(principal, newExpiration)
 
-  def parse(tokenString: String): Either[TokenError, Token] =
+  def parse(tokenString: String): Either[TokenError, AuthToken] =
     tokenString.split("&").toList match {
       case principal :: expirationString :: attributes :: signature :: Nil =>
         Try(expirationString.toLong) match {
           case Success(expiration) =>
-            val token = Token(principal, expiration, attributes)
+            val token = AuthToken(principal, expiration, attributes)
             Either.cond(sign(token) == signature, token, TokenParseError("incorrect signature"))
-          case _ => Left(TokenParseError("expiration not a long"))
+          case _ => Left(TokenParseError(wrongTypeError))
         }
-      case _ => Left(TokenParseError("incorrect number of fields"))
+      case _ => Left(TokenParseError(wrongFieldsError))
     }
 
-  def serialize(token: Token): String =
+  def serialize(token: AuthToken): String =
     List(token.principal, token.expiration, token.attributes, sign(token)).mkString("&")
 }
 
-case class Token private[spnego] (principal: String, expiration: Long, attributes: String = "") {
+case class AuthToken private[spnego](principal: String, expiration: Long, attributes: String = "") {
   def expired: Boolean = System.currentTimeMillis > expiration
 }

@@ -16,8 +16,6 @@ import javax.security.auth.login.LoginContext
 import org.http4s._
 import org.ietf.jgss.{GSSCredential, GSSManager}
 
-import scala.util.Try
-
 private[spnego] object SpnegoAuthenticator {
   val Negotiate = "Negotiate"
   val Authenticate = "WWW-Authenticate"
@@ -26,46 +24,78 @@ private[spnego] object SpnegoAuthenticator {
     case CredentialsRejected => "Credentials rejected"
     case CredentialsMissing => "Credentials are missing"
   }
+
+  private[spnego] def loginContext[F[_]](cfg: SpnegoConfig)(implicit F: Sync[F]): F[LoginContext] = for {
+    (entryName, kerberosConfiguration) <- F.delay {
+      cfg.jaasConfig match {
+        case Some(c) =>
+          val noEntryNeeded = ""
+          (noEntryNeeded, KerberosConfiguration(cfg.principal, c).some)
+        case None => (SpnegoConfig.JaasConfigEntryName, None)
+      }
+    }.onError { case e =>
+      F.raiseError(new RuntimeException("Spnego Configuration creation has been failed", e))
+    }
+
+    lc <- F.delay {
+      val subject = new Subject(
+        false,
+        Collections.singleton(new KerberosPrincipal(cfg.principal)),
+        Collections.emptySet(),
+        Collections.emptySet()
+      )
+      val noCallback = null
+      new LoginContext(entryName, subject, noCallback, kerberosConfiguration.orNull)
+    }.onError { case e =>
+      F.raiseError(
+        new RuntimeException(
+          "Login context creation failed. In case the JAAS file is used, please check that 'java.security.auth.login.config' Java property is set",
+          e
+        )
+      )
+    }
+  } yield lc
+
+  /*
+  Creates LoginContext, logins and created GSSManager based on SpnegoConfig
+   */
+  private[spnego] def apply[F[_]](cfg: SpnegoConfig, tokens: Tokens)(implicit F: Sync[F]): F[SpnegoAuthenticator[F]] =
+    for {
+      (lc, manager) <- login[F](cfg)
+    } yield new SpnegoAuthenticator[F](cfg, tokens, lc, manager)
+
+  private[spnego] def login[F[_]](cfg: SpnegoConfig)(implicit F: Sync[F]): F[(LoginContext, GSSManager)] =
+    for {
+      lc <- loginContext(cfg)
+      _ <- F.delay(lc.login()).onError { case e =>
+        F.raiseError(new RuntimeException("Service login failed", e))
+      }
+      manager <- createGssManager[F](lc).onError { case e =>
+        F.raiseError(new RuntimeException("GSSManager creation failed", e))
+      }
+    } yield (lc, manager)
+
+  private[spnego] def createGssManager[F[_]](lc: LoginContext)(implicit F: Sync[F]) =
+    F.delay {
+      Subject.doAs(
+        lc.getSubject,
+        new PrivilegedAction[GSSManager] {
+          override def run: GSSManager = GSSManager.getInstance
+        }
+      )
+    }
 }
 
-private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Tokens)(implicit F: Sync[F]) {
+private[spnego] class SpnegoAuthenticator[F[_]](
+  cfg: SpnegoConfig,
+  tokens: Tokens,
+  lc: LoginContext,
+  gssManager: GSSManager
+)(implicit F: Sync[F]) {
   implicit lazy val logger: Logger[F] = Slf4jLogger.getLogger[F]
 
-  private val subject = new Subject(
-    false,
-    Collections.singleton(new KerberosPrincipal(cfg.principal)),
-    Collections.emptySet(),
-    Collections.emptySet()
-  )
-
-  private val (entryName, kerberosConfiguration) =
-    cfg.jaasConfig match {
-      case Some(c) => ("", KerberosConfiguration(cfg.principal, c).some)
-      case None => (SpnegoConfig.JaasConfigEntryName, None)
-    }
-
-  private val noCallback = null
-  private val loginContext =
-    Try(new LoginContext(entryName, subject, noCallback, kerberosConfiguration.orNull)).fold(
-      e =>
-        throw new RuntimeException(
-          "In case of JAAS file is used, please check that java.security.auth.login.config Java property is set",
-          e
-        ),
-      identity
-    )
-
-  loginContext.login()
-
-  private[spnego] def apply(hs: Headers): F[Either[Rejection, Token]] =
+  private[spnego] def apply(hs: Headers): F[Either[Rejection, AuthToken]] =
     cookieToken(hs).orElse(kerberosNegotiate(hs)).getOrElseF(initiateNegotiations)
-
-  private val gssManager = Subject.doAs(
-    loginContext.getSubject,
-    new PrivilegedAction[GSSManager] {
-      override def run: GSSManager = GSSManager.getInstance
-    }
-  )
 
   private def cookieToken(hs: Headers) =
     for {
@@ -87,10 +117,10 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
       res <- OptionT(t match {
         case Right(token) =>
           if (token.expired)
-            logger.debug("SPNEGO token inside cookie expired") *> none[Either[Rejection, Token]].pure[F]
+            logger.debug("SPNEGO token inside cookie expired") *> none[Either[Rejection, AuthToken]].pure[F]
           else
             logger.debug("SPNEGO token inside cookie not expired") *> token.asRight[Rejection].some.pure[F]
-        case Left(e) => Either.left[Rejection, Token](e).some.pure[F]
+        case Left(e) => Either.left[Rejection, AuthToken](e).some.pure[F]
       })
     } yield res
 
@@ -118,7 +148,7 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
     Header(Authenticate, scheme)
   }
 
-  private def kerberosCore(clientToken: Array[Byte]): F[Either[Rejection, Token]] =
+  private def kerberosCore(clientToken: Array[Byte]): F[Either[Rejection, AuthToken]] =
     F.defer {
       for {
         (maybeServerToken, maybeToken) <- kerberosAcceptToken(clientToken)
@@ -127,7 +157,7 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
           case Some(t) => logger.debug("received new token") *> t.asRight[Rejection].pure[F]
           case _ =>
             logger.debug("no token received, but if there is a serverToken, then negotiations are ongoing") *> Either
-              .left[Rejection, Token](
+              .left[Rejection, AuthToken](
                 AuthenticationFailedRejection(CredentialsMissing, challengeHeader(maybeServerToken))
               )
               .pure[F]
@@ -137,36 +167,34 @@ private[spnego] class SpnegoAuthenticator[F[_]](cfg: SpnegoConfig, tokens: Token
       case e: PrivilegedActionException =>
         e.getException match {
           case e: IOException =>
-            logger.error(e)("server error") *> Either.left[Rejection, Token](ServerErrorRejection(e)).pure[F]
+            logger.error(e)("server error") *> Either.left[Rejection, AuthToken](ServerErrorRejection(e)).pure[F]
           case _ =>
             logger.error(e)("negotiation failed") *> Either
-              .left[Rejection, Token](AuthenticationFailedRejection(CredentialsRejected, challengeHeader()))
+              .left[Rejection, AuthToken](AuthenticationFailedRejection(CredentialsRejected, challengeHeader()))
               .pure[F]
         }
       case e =>
-        logger.error(e)("unexpected error") *> Either.left[Rejection, Token](UnexpectedErrorRejection(e)).pure[F]
+        logger.error(e)("unexpected error") *> Either.left[Rejection, AuthToken](UnexpectedErrorRejection(e)).pure[F]
     }
 
-  private[spnego] def kerberosAcceptToken(clientToken: Array[Byte]): F[(Option[Array[Byte]], Option[Token])] =
+  private[spnego] def kerberosAcceptToken(clientToken: Array[Byte]): F[(Option[Array[Byte]], Option[AuthToken])] =
     F.delay {
       Subject.doAs(
-        loginContext.getSubject,
-        new PrivilegedExceptionAction[(Option[Array[Byte]], Option[Token])] {
-          override def run: (Option[Array[Byte]], Option[Token]) = {
+        lc.getSubject,
+        new PrivilegedExceptionAction[(Option[Array[Byte]], Option[AuthToken])] {
+          override def run: (Option[Array[Byte]], Option[AuthToken]) = {
             val defaultAcceptor: GSSCredential = null
             val gssContext = gssManager.createContext(defaultAcceptor)
-            val res = (
-              Option(gssContext.acceptSecContext(clientToken, 0, clientToken.length)),
-              if (gssContext.isEstablished) Some(tokens.create(gssContext.getSrcName.toString)) else None
-            )
+            val serverToken = Option(gssContext.acceptSecContext(clientToken, 0, clientToken.length))
+            val authToken = if (gssContext.isEstablished) Some(tokens.create(gssContext.getSrcName.toString)) else None
             gssContext.dispose()
-            res
+            (serverToken, authToken)
           }
         }
       )
     }
 
-  private def initiateNegotiations: F[Either[Rejection, Token]] =
+  private def initiateNegotiations: F[Either[Rejection, AuthToken]] =
     logger.debug("no negotiation header found, initiating negotiations") *>
-      Either.left[Rejection, Token](AuthenticationFailedRejection(CredentialsMissing, challengeHeader())).pure[F]
+      Either.left[Rejection, AuthToken](AuthenticationFailedRejection(CredentialsMissing, challengeHeader())).pure[F]
 }
