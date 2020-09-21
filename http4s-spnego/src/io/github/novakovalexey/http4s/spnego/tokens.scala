@@ -49,6 +49,6 @@ class Tokens(tokenValidity: Long, signatureSecret: Array[Byte]) {
     List(token.principal, token.expiration, token.attributes, sign(token)).mkString("&")
 }
 
-case class AuthToken private[spnego](principal: String, expiration: Long, attributes: String = "") {
+case class AuthToken private[spnego] (principal: String, expiration: Long, attributes: String = "") {
   def expired: Boolean = System.currentTimeMillis > expiration
 }
