@@ -1,0 +1,17 @@
+apiVersion: io.github.novakov-alexey/v1
+kind: Krb
+metadata:
+  name: test-krb
+spec:
+  realm: EXAMPLE.ORG
+  principals:
+    - name: HTTP/testserver.test.svc.cluster.local
+      keytab: krb5.keytab
+      secret:
+        type: Keytab
+        name: test-keytab
+    - name: test-client
+      keytab: client.keytab
+      secret:
+        type: KeytabAndPassword
+        name: test-keytab

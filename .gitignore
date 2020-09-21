@@ -5,3 +5,5 @@ target
 metals.sbt
 .idea_modules
 out
+.dotty-ide-disabled
+settings.json

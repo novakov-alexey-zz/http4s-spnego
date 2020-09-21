@@ -71,7 +71,8 @@ object `test-server` extends ScalaModule {
     val allJars = packageSelfModules() ++ runClasspath()
       .map(_.path)
       .filter(path => exists(path) && !path.isDir)
-
+      .toSeq
+      
     allJars.foreach { file =>
       cp.into(file, libDir)
     }

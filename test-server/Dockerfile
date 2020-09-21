@@ -1,9 +1,8 @@
 FROM adoptopenjdk/openjdk11:debian-slim as stage0
 WORKDIR /opt/docker
-COPY out/test-server/packageIt/dest /opt/docker
+COPY out/test-server/assembly/dest /opt/docker
 USER root
 RUN ["chmod", "-R", "u=rX,g=rX", "/opt/docker"]
-RUN ["chmod", "u+x,g+x", "/opt/docker/bin/run"]
 USER 1001:0
 
 FROM adoptopenjdk/openjdk11:debian
@@ -21,5 +20,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends krb5-user=1.17-
 # Kerberos stuff - end
 
 USER 1001:0
-ENTRYPOINT ["/opt/docker/bin/run"]
+ENTRYPOINT ["java", "-jar", "/opt/docker/out.jar"]
 CMD []

@@ -8,7 +8,7 @@ import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.Logger
 import org.http4s.{AuthedRoutes, HttpRoutes}
-
+import org.http4s.server.Router
 import scala.concurrent.duration._
 
 object Main extends IOApp {
@@ -18,7 +18,7 @@ object Main extends IOApp {
   def stream[F[_]: ConcurrentEffect: ContextShift: Timer]: Stream[F, ExitCode] = for {
     spnego <- Stream.eval(makeSpnego)
 
-    httpApp = new LoginEndpoint[F](spnego).routes.orNotFound
+    httpApp = Router("/auth" -> new LoginEndpoint[F](spnego).routes).orNotFound
     finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(httpApp)
 
     stream <- BlazeServerBuilder[F]
@@ -39,7 +39,9 @@ object Main extends IOApp {
     val signatureSecret = "secret"
 
     val cfg = SpnegoConfig(realm, principal, signatureSecret, domain, path, tokenValidity, cookieName)
-    System.setProperty("java.security.auth.login.config", "test-server/src/main/resources/server-jaas.conf")
+    val jaasConfigPath = sys.env.getOrElse("JAAS_CONF_PATH", "test-server/resources/server-jaas.conf")
+    println(s"jaasConfigPath: $jaasConfigPath")
+    System.setProperty("java.security.auth.login.config", jaasConfigPath)
     Spnego[F](cfg)
   }
 }
@@ -47,7 +49,7 @@ object Main extends IOApp {
 class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] =
-    spnego(AuthedRoutes.of[Token, F] {
+    spnego(AuthedRoutes.of[AuthToken, F] {
       case GET -> Root as token =>
         Ok(s"This page is protected using HTTP SPNEGO authentication; logged as ${token.principal}")
           .map(_.addCookie(spnego.signCookie(token)))
