@@ -6,8 +6,12 @@ let k8s =
 
 let testServerTag = env:TEST_SERVER_TAG as Text
 
+let realm = "EXAMPLE.ORG"
+
 let deploymentName = "testserver"
-let servicePrincipal = "HTTP/${deploymentName}.test.svc.cluster.local@EXAMPLE.ORG"
+
+let servicePrincipal = "HTTP/${deploymentName}.test.svc.cluster.local@${realm}"
+
 let labels = Some (toMap { deployment = deploymentName })
 
 let mount =
@@ -47,6 +51,19 @@ let jaasConfMap =
       , data = Some [ { mapKey = jaasConfKey, mapValue = jaasConf } ]
       }
 
+let testScript =
+      ''
+      kinit -kt /krb5/client.keytab test-client@${realm}
+      SERVER_HOSTNAME=http://${deploymentName}:8080
+      curl -v -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt $SERVER_HOSTNAME/auth
+      ''
+
+let clientTestScript =
+      kubernetes.ConfigMap::{
+      , metadata = kubernetes.ObjectMeta::{ name = Some "test-script" }
+      , data = Some [ { mapKey = "test.sh", mapValue = testScript } ]
+      }
+
 let service =
       kubernetes.Service::{
       , metadata = kubernetes.ObjectMeta::{ name = Some deploymentName }
@@ -59,8 +76,8 @@ let service =
             , targetPort = Some (kubernetes.IntOrString.Int 8080)
             }
           ]
-          , selector =  labels
-          , type = Some "ClusterIP"
+        , selector = labels
+        , type = Some "ClusterIP"
         }
       }
 
@@ -98,17 +115,18 @@ let deployment =
                       "jaas-conf"
                       "/opt/docker/${jaasConfKey}"
                       (Some jaasConfKey)
+                  , mount "test-script" "/opt/docker/test.sh" (Some "test.sh")
                   ]
                 , env = Some
                   [ kubernetes.EnvVar::{
                     , name = "JAAS_CONF_PATH"
                     , value = Some "/opt/docker/${jaasConfKey}"
-                    },
-                    kubernetes.EnvVar::{
+                    }
+                  , kubernetes.EnvVar::{
                     , name = "PRINCIPAL"
                     , value = Some servicePrincipal
-                    },
-                    kubernetes.EnvVar::{
+                    }
+                  , kubernetes.EnvVar::{
                     , name = "KEYTAB"
                     , value = Some "/krb5/krb5.keytab"
                     }
@@ -128,6 +146,10 @@ let deployment =
                 , name = "jaas-conf"
                 , configMap = Some (cmVolume "jaas-conf" jaasConfKey)
                 }
+              , kubernetes.Volume::{
+                , name = "test-script"
+                , configMap = Some (cmVolume "test-script" "test.sh")
+                }
               ]
             }
           }
@@ -136,5 +158,10 @@ let deployment =
 
 in  { apiVersion = "v1"
     , kind = "List"
-    , items = [ k8s.Deployment deployment, k8s.ConfigMap jaasConfMap, k8s.Service service ]
+    , items =
+      [ k8s.Deployment deployment
+      , k8s.ConfigMap jaasConfMap
+      , k8s.ConfigMap clientTestScript
+      , k8s.Service service
+      ]
     }
