@@ -4,7 +4,7 @@ let kubernetes =
 let k8s =
       https://raw.githubusercontent.com/dhall-lang/dhall-kubernetes/master/typesUnion.dhall sha256:d7b8c9c574f3c894fa2bca9d9c2bec1fea972bb3acdde90e473bc2d6ee51b5b1
 
-let testServerTag = env:TEST_SERVER_TAG as Text ? "dfd"
+let testServerTag = env:TEST_SERVER_TAG as Text ? "n/a"
 
 let realm = "EXAMPLE.ORG"
 
@@ -12,7 +12,8 @@ let deploymentName = "testserver"
 
 let servicePrincipal = "HTTP/${deploymentName}.test.svc.cluster.local@${realm}"
 
-let labels = Some (toMap { serverDeployment = deploymentName })
+let labels =
+      λ(deploymentName : Text) → Some (toMap { deployment = deploymentName })
 
 let mount =
       λ(name : Text) →
@@ -55,7 +56,7 @@ let testScriptName = "test.sh"
 
 let testScript =
       ''
-      kinit -kt /krb5/clientDeployment.keytab test-clientDeployment@${realm}
+      kinit -kt /krb5/client.keytab test-client@${realm}
       SERVER_HOSTNAME=http://${deploymentName}:8080
       curl -v -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt $SERVER_HOSTNAME/auth
       ''
@@ -78,7 +79,7 @@ let service =
             , targetPort = Some (kubernetes.IntOrString.Int 8080)
             }
           ]
-        , selector = labels
+        , selector = labels deploymentName
         , type = Some "ClusterIP"
         }
       }
@@ -149,28 +150,33 @@ let deployment =
       λ(envVars : Optional (List kubernetes.EnvVar.Type)) →
       λ(volumes : List kubernetes.Volume.Type) →
       λ(mounts : List kubernetes.VolumeMount.Type) →
+      λ(command : Optional (List Text)) →
         kubernetes.Deployment::{
         , metadata = kubernetes.ObjectMeta::{
           , name = Some name
           , labels = Some (toMap { app = "spnego" })
           }
         , spec = Some kubernetes.DeploymentSpec::{
-          , selector = kubernetes.LabelSelector::{ matchLabels = labels }
+          , selector = kubernetes.LabelSelector::{ matchLabels = (labels name) }
           , replicas = Some 1
           , template = kubernetes.PodTemplateSpec::{
-            , metadata = kubernetes.ObjectMeta::{ labels }
+            , metadata = kubernetes.ObjectMeta::{ labels = (labels name)}
             , spec = Some kubernetes.PodSpec::{
               , containers =
                 [ kubernetes.Container::{
                   , name
                   , imagePullPolicy = Some "Always"
                   , image = Some "alexeyn/test-server:${testServerTag}"
+                  , env = envVars
+                  , volumeMounts = Some mounts
                   , ports = Some
                     [ kubernetes.ContainerPort::{ containerPort = 8080 } ]
+                  , command
                   }
                 ]
               , restartPolicy = Some "Always"
               , terminationGracePeriodSeconds = Some 30
+              , volumes = Some volumes
               }
             }
           }
@@ -182,9 +188,15 @@ let clientDeployment =
         (None (List kubernetes.EnvVar.Type))
         clientVols
         clientMounts
+        (Some [ "sleep", "1000000" ])
 
 let serverDeployment =
-      deployment deploymentName serverEnvVars serverVols serverMounts
+      deployment
+        deploymentName
+        serverEnvVars
+        serverVols
+        serverMounts
+        (None (List Text))
 
 in  { apiVersion = "v1"
     , kind = "List"

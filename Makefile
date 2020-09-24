@@ -3,7 +3,7 @@
 
 args = `arg="$(filter-out $@,$(MAKECMDGOALS))" && echo $${arg:-${1}}`
 
-TEST_SERVER_TAG=0.8
+TEST_SERVER_TAG=0.9
 
 test:
 	kubectl get nodes
