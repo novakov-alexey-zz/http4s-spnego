@@ -1,0 +1,1 @@
+https://raw.githubusercontent.com/dhall-lang/dhall-kubernetes/master/package.dhall sha256:d541487f153cee9890ebe4145bae8899e91cd81e2f4a5b65b06dfc325fb1ae7e
