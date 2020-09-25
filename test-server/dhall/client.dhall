@@ -4,8 +4,7 @@ let mount = ./mount.dhall
 
 let deployment = ./deployment.dhall
 
-let k8s =
-      https://raw.githubusercontent.com/dhall-lang/dhall-kubernetes/master/typesUnion.dhall sha256:d7b8c9c574f3c894fa2bca9d9c2bec1fea972bb3acdde90e473bc2d6ee51b5b1
+let k8s = ./typesUnion.dhall
 
 let cmVolume =
       λ(name : Text) →
