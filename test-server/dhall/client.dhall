@@ -16,20 +16,21 @@ let cmVolume =
         }
 
 let testScriptName = "test.sh"
+let testScriptKey = "test-script"
 
 let clientVols =
       λ(keytabVol : kubernetes.Volume.Type) →
         [ keytabVol
         , kubernetes.Volume::{
-          , name = "test-script"
-          , configMap = Some (cmVolume "test-script" testScriptName)
+          , name = testScriptKey
+          , configMap = Some (cmVolume testScriptKey testScriptName)
           }
         ]
 
 let clientMounts =
       λ(keytabMount : kubernetes.VolumeMount.Type) →
         [ keytabMount
-        , mount "test-script" "/opt/docker/test.sh" (Some "test.sh")
+        , mount testScriptKey "/opt/docker/${testScriptName}" (Some testScriptName)
         ]
 
 let testScript =
@@ -48,7 +49,7 @@ let buildClient =
       λ(keytabVol : kubernetes.Volume.Type) →
         let clientTestScript =
               kubernetes.ConfigMap::{
-              , metadata = kubernetes.ObjectMeta::{ name = Some "test-script" }
+              , metadata = kubernetes.ObjectMeta::{ name = Some testScriptKey }
               , data = Some
                 [ { mapKey = testScriptName
                   , mapValue = testScript deploymentName realm
