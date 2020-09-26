@@ -108,7 +108,9 @@ Added field will be used to create a JWT signature.
 
 See [tests](http4s-spnego/test/src/io/github/novakovalexey/http4s/spnego) and [test-server](test-server/src/io/github/novakovalexey/http4s/spnego/Main.scala) module for more examples.
 
-## Testing with test server
+## Testing with test server 
+
+### Manually
 
 1.  Make sure Kerberos is installed and configured for your server and client machines.
 2.  Configure test server with proper realm, principal, keytab path (see config above)
@@ -119,3 +121,35 @@ See [tests](http4s-spnego/test/src/io/github/novakovalexey/http4s/spnego) and [t
 ```bash
 curl -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt http://<yourserver>:8080/
 ```
+
+### Using Kerberos Operator
+
+Kerberos Operator allows to spin up a KDC instance in Kubernetes via CRD. See more details on
+the operator here: https://github.com/novakov-alexey/krb-operator
+
+#### Prepare environment
+
+First of all you need a Kubernetes cluster. Then use existing make file to run the following.
+
+```bash 
+make deploy-krb-operator
+make create-principals
+```
+
+Once operator and Kerberos servev (KDC container) are up running check that new Kubernetes secret created with name `test-keytab`.
+If secret is there, then deploy client and server pods by running:
+
+```bash
+deploy-client-server
+```
+
+If secret is not yet created then wait a minute and check again.
+
+Once client and server pods are up and running, tail server pod log to see what is going on http4s server side. Then go to client pod shell.
+You can use `kubectl exec -it ...` for example. In the client Pod shell run:
+
+```bash
+sh /opt/docker/test.sh
+```
+
+Expected result is `Ok` status in the `curl` output of the client's Pod shell.
