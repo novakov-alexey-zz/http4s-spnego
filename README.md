@@ -130,7 +130,7 @@ curl -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt http://<yourserve
 ### Using Kerberos Operator
 
 Kerberos Operator allows to spin up a KDC instance in Kubernetes via CRD. See more details on
-the operator here: https://github.com/novakov-alexey/krb-operator
+the operator here: [https://github.com/novakov-alexey/krb-operator]()
 
 First of all you need a Kubernetes cluster. Then use existing make file to run the following.
 
