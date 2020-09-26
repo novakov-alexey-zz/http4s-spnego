@@ -43,7 +43,7 @@ val cfg = SpnegoConfig(
     Some(JaasConfig(keytab, debug, None)) // option 1
   )
 
-val spnego = Spnego[IO](cfg)
+val spnegoIO: IO[Spnego[IO]] = Spnego[IO](cfg) // creation is side-effectful
 ```
 
 JaasConfig can be also set to `None` value (option 2) in order pass JaasConfig via standard JAAS file. For example:
@@ -77,13 +77,18 @@ class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
 4.  Use routes in your server:
 
 ```scala
-val login = new LoginEndpoint[IO](spnego)
-val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(login)
+def stream[F[_]: ConcurrentEffect: ContextShift: Timer]: Stream[F, ExitCode] = 
+  for {
+    spnego <- Stream.eval(spnegoIO)
 
-BlazeServerBuilder[F]
-  .bindHttp(8080, "0.0.0.0")
-  .withHttpApp(finalHttpApp)
-  .serve
+    httpApp = Router("/auth" -> new LoginEndpoint[F](spnego).routes).orNotFound
+    finalHttpApp = Logger.httpApp(logHeaders = true, logBody = true)(httpApp)
+
+    stream <- BlazeServerBuilder[F]
+      .bindHttp(8080, "0.0.0.0")
+      .withHttpApp(finalHttpApp)
+      .serve
+  } yield stream  
 ```
 
 ## Add property to the Token
@@ -127,8 +132,6 @@ curl -k --negotiate -u : -b ~/cookiejar.txt -c ~/cookiejar.txt http://<yourserve
 Kerberos Operator allows to spin up a KDC instance in Kubernetes via CRD. See more details on
 the operator here: https://github.com/novakov-alexey/krb-operator
 
-#### Prepare environment
-
 First of all you need a Kubernetes cluster. Then use existing make file to run the following.
 
 ```bash 
@@ -153,3 +156,13 @@ sh /opt/docker/test.sh
 ```
 
 Expected result is `Ok` status in the `curl` output of the client's Pod shell.
+
+#### Remove Kubernetes Test setup
+
+Run the following commmands:
+
+```bash
+make delete-principals
+make undeploy-client-server
+make undeploy-krb-operator
+```

@@ -16,7 +16,7 @@ build-server:
 
 deploy-client-server:
 	cd test-server/dhall && TEST_SERVER_TAG=$(TEST_SERVER_TAG) dhall-to-yaml --documents < setup.dhall | kubectl create -n ${NAMESPACE} -f -
-undeploy-client-testserver:
+undeploy-client-server:
 	cd test-server/dhall && TEST_SERVER_TAG=$(TEST_SERVER_TAG) dhall-to-yaml --explain --documents < setup.dhall | kubectl delete -n ${NAMESPACE} -f -
 
 deploy-krb-operator:
@@ -35,3 +35,5 @@ undeploy-krb-operator:
 
 create-principals:
 	kubectl create -f test-server/my-krb-1.yaml -n ${NAMESPACE}
+delete-principals:
+	kubectl delete -f test-server/my-krb-1.yaml -n ${NAMESPACE}
