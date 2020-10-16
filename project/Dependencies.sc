@@ -2,7 +2,7 @@ import mill._
 import mill.scalalib._
 
 object Dependencies {
-  lazy val http4sVersion = "0.21.7"    
+  lazy val http4sVersion = "0.21.8"    
   lazy val http4sBase = {
     Agg(      
       ivy"org.http4s::http4s-core:$http4sVersion",      
