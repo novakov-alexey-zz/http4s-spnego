@@ -27,7 +27,7 @@ object Main extends IOApp {
       .serve
   } yield stream
 
-  private def makeSpnego[F[_] : ConcurrentEffect : ContextShift : Timer] = {
+  private def makeSpnego[F[_]: ConcurrentEffect: ContextShift: Timer] = {
     val realm = sys.env.getOrElse("REALM", "EXAMPLE.ORG")
     val principal = sys.env.getOrElse("PRINCIPAL", s"HTTP/testserver@$realm")
     val keytab = sys.env.getOrElse("KEYTAB", "/tmp/krb5.keytab")
@@ -49,9 +49,8 @@ object Main extends IOApp {
 class LoginEndpoint[F[_]: Sync](spnego: Spnego[F]) extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] =
-    spnego(AuthedRoutes.of[AuthToken, F] {
-      case GET -> Root as token =>
-        Ok(s"This page is protected using HTTP SPNEGO authentication; logged as ${token.principal}")
-          .map(_.addCookie(spnego.signCookie(token)))
+    spnego(AuthedRoutes.of[AuthToken, F] { case GET -> Root as token =>
+      Ok(s"This page is protected using HTTP SPNEGO authentication; logged as ${token.principal}")
+        .map(_.addCookie(spnego.signCookie(token)))
     })
 }
