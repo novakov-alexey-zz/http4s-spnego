@@ -50,7 +50,7 @@ jobs:
           java-version: 11.0.x
       - uses: jodersky/setup-mill@master
         with:
-          mill-version: 0.7.3
+          mill-version: 0.8.0
       - name: Publish
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         env:
