@@ -14,5 +14,5 @@ object Dependencies {
 
   lazy val betterMonadicFor = Agg(ivy"com.olegpy::better-monadic-for:0.3.1")
 
-  lazy val tests = Agg(ivy"org.scalatest::scalatest:3.2.2") ++ http4sDsl
+  lazy val tests = Agg(ivy"org.scalatest::scalatest:3.2.3") ++ http4sDsl
 }
