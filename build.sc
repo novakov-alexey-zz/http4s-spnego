@@ -33,8 +33,8 @@ class Http4sSpnegoModule(val crossScalaVersion: String)
   override def scalacPluginIvyDeps = super.scalacPluginIvyDeps() ++ betterMonadicFor
 
   object test extends Tests {
-    def testFrameworks    = Seq("org.scalatest.tools.Framework")
-    override def ivyDeps  = super.ivyDeps() ++ tests
+    def testFrameworks = Seq("org.scalatest.tools.Framework")
+    override def ivyDeps = super.ivyDeps() ++ tests
     override def scalacOptions =
       super.scalacOptions().filter(_ != "-Wunused:params").filter(_ != "-Xfatal-warnings") ++
         (if (scalaVersion().startsWith("2.12")) Seq("-Ypartial-unification") else Seq.empty)
@@ -72,16 +72,12 @@ object `test-server` extends ScalaModule {
       .map(_.path)
       .filter(path => exists(path) && !path.isDir)
       .toSeq
-      
+
     allJars.foreach { file =>
       cp.into(file, libDir)
     }
 
-    val runnerFile = Jvm.createLauncher(
-      finalMainClass(),
-      Agg.from(ls(libDir)),
-      forkArgs()
-    )
+    val runnerFile = Jvm.createLauncher(finalMainClass(), Agg.from(ls(libDir)), forkArgs())
 
     mv.into(runnerFile.path, binDir)
 
@@ -94,12 +90,11 @@ object `test-server` extends ScalaModule {
       module.jar
         .zip(module.artifactName)
         .zip(module.artifactId)
-        .map {
-          case ((jar, name), suffix) =>
-            val namedJar = jar.path / up / s"$name$suffix.jar"
-            cp(jar.path, namedJar)
+        .map { case ((jar, name), suffix) =>
+          val namedJar = jar.path / up / s"$name$suffix.jar"
+          cp(jar.path, namedJar)
 
-            namedJar
+          namedJar
         }
     }
   }
