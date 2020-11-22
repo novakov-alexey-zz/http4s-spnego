@@ -54,6 +54,7 @@ jobs:
       - name: Publish
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
           SONATYPE_CREDENTIALS: ${{ secrets.SONATYPE_CREDENTIALS }}
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
         run: |
