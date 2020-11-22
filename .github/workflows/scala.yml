@@ -1,6 +1,4 @@
 name: CI
-env:
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 on:
   create:
     tags:
@@ -49,7 +47,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11.0.x
-      - uses: jodersky/setup-mill@master
+      - uses: jodersky/setup-mill@beta
         with:
           mill-version: 0.8.0
       - name: Publish
