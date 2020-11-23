@@ -47,7 +47,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11.0.x
-      - uses: jodersky/setup-mill@beta
+      - uses: jodersky/setup-mill@v0.2.3
         with:
           mill-version: 0.8.0
       - name: Publish
