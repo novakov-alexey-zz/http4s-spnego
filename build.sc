@@ -1,7 +1,7 @@
-import $ivy.`com.goyeau::mill-git:0.1.0-6-4254b37`
-import $ivy.`com.goyeau::mill-scalafix:8515ae6`
+import $ivy.`com.goyeau::mill-git:9977203`
+import $ivy.`com.goyeau::mill-scalafix:9433263`
 import $ivy.`com.lihaoyi::mill-contrib-bsp:$MILL_VERSION`
-import $ivy.`io.github.davidgregory084::mill-tpolecat:0.1.3`
+import $ivy.`io.github.davidgregory084::mill-tpolecat:0.1.4`
 import $file.project.Dependencies, Dependencies.Dependencies._
 import com.goyeau.mill.git.GitVersionedPublishModule
 import com.goyeau.mill.scalafix.ScalafixModule
@@ -15,7 +15,7 @@ import ammonite.ops._
 
 object ScalaVersion {
   val ver213 = "2.13.2"
-  val ver212 = "2.12.11"
+  val ver212 = "2.12.13"
 }
 
 object `http4s-spnego` extends Cross[Http4sSpnegoModule](ScalaVersion.ver213, ScalaVersion.ver212)
