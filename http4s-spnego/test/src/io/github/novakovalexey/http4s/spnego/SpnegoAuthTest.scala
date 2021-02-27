@@ -52,7 +52,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
 
     val route = loginEndpoint.routes.orNotFound
     val res = route.run(req)
-    val actualResp = res.unsafeRunSync
+    val actualResp = res.unsafeRunSync()
 
     actualResp.status should ===(Status.Unauthorized)
     actualResp.as[String].unsafeRunSync() should ===(SpnegoAuthenticator.reasonToString(CredentialsRejected))
@@ -63,7 +63,7 @@ class SpnegoAuthTest extends AnyFlatSpec with Matchers {
 
     val route = loginEndpoint.routes.orNotFound
     val res = route.run(req)
-    val actualResp = res.unsafeRunSync
+    val actualResp = res.unsafeRunSync()
 
     actualResp.status should ===(Status.Unauthorized)
     actualResp.as[String].unsafeRunSync() should include("Failed to parse ")
