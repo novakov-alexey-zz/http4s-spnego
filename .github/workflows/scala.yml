@@ -19,7 +19,7 @@ jobs:
         with:
           java-version: 11.0.x
       - name: Style checks
-        run: ./mill all __.checkFormat " __.docJar
+        run: ./mill all __.checkFormat __.docJar
 
   tests:
     runs-on: ubuntu-latest
