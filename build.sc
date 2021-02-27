@@ -1,10 +1,8 @@
 import $ivy.`com.goyeau::mill-git:9977203`
-import $ivy.`com.goyeau::mill-scalafix:9433263`
 import $ivy.`com.lihaoyi::mill-contrib-bsp:$MILL_VERSION`
 import $ivy.`io.github.davidgregory084::mill-tpolecat:0.1.4`
 import $file.project.Dependencies, Dependencies.Dependencies._
 import com.goyeau.mill.git.GitVersionedPublishModule
-import com.goyeau.mill.scalafix.ScalafixModule
 import io.github.davidgregory084.TpolecatModule
 import mill._
 import mill.scalalib._
@@ -22,8 +20,7 @@ object `http4s-spnego` extends Cross[Http4sSpnegoModule](ScalaVersion.ver213, Sc
 class Http4sSpnegoModule(val crossScalaVersion: String)
     extends CrossScalaModule
     with TpolecatModule
-    with ScalafmtModule
-    with ScalafixModule
+    with ScalafmtModule    
     with GitVersionedPublishModule {
   override def scalacOptions =
     super.scalacOptions().filter(_ != "-Wunused:imports").filter(_ != "-Wunused:explicits") ++
