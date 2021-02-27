@@ -12,7 +12,7 @@ import mill.modules.Jvm
 import ammonite.ops._
 
 object ScalaVersion {
-  val ver213 = "2.13.2"
+  val ver213 = "2.13.5"
   val ver212 = "2.12.13"
 }
 

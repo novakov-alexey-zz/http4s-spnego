@@ -10,7 +10,7 @@ object Dependencies {
 
   lazy val logging = Agg(ivy"io.chrisdavenport::log4cats-slf4j:1.1.1", ivy"ch.qos.logback:logback-classic:1.2.3")
 
-  lazy val kindProjector = Agg(ivy"org.typelevel:kind-projector_2.13.2:0.11.3") // had to put explicit Scala version, otherwise it resolves some old/wrong Scala version :-(
+  lazy val kindProjector = Agg(ivy"org.typelevel:kind-projector_2.13.5:0.11.3") // had to put explicit Scala version, otherwise it resolves some old/wrong Scala version :-(
 
   lazy val betterMonadicFor = Agg(ivy"com.olegpy::better-monadic-for:0.3.1")
 
